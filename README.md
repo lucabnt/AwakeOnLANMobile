@@ -8,6 +8,7 @@ Maintained by [lucabnt](https://github.com/lucabnt/AwakeOnLANMobile) on the `per
 
 - Send Wake-on-LAN magic packets to IPv4 or IPv6 destinations, with configurable UDP port and optional WOL password.
 - Add, edit, and delete saved devices. Android device records, including passwords, are encrypted at rest.
+- Open directly to saved devices. Tabs are ordered **Device List**, **Add Device**, and **Scan Hosts**; adding a device remains available from the second tab, including when no devices have been saved yet.
 - Scan a single IPv4 address or subnet from `/24` to `/32`, using ICMP ping or a TCP connection to port 443.
 - Cancel an active scan. Each scan is limited to 256 addresses and 30 seconds; only one native scan runs at a time.
 - Light and dark themes. No advertisements, accounts, or cloud storage.
@@ -118,7 +119,7 @@ Use a disposable emulator or test device. Also manually verify migration from an
 
 ## Scope and credits
 
-Home-screen widgets and changes to the default tab are planned separately and are not included in this security update.
+The app opens on **Device List**, including on first launch when the list is empty. Home-screen widgets are planned separately and are not included yet.
 
 The networking implementation derives from [AwakeOnLAN](https://github.com/nellogan/awakeonlan) and [NetScan](https://github.com/nellogan/netscan), by the upstream author. The original application is [AwakeOnLANMobile](https://github.com/nellogan/AwakeOnLANMobile).
 

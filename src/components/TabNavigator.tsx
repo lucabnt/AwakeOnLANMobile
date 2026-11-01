@@ -33,6 +33,7 @@ export const TabNavigator = () => {
 
   return (
     <Tab.Navigator
+      initialRouteName="DeviceList"
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
@@ -44,14 +45,14 @@ export const TabNavigator = () => {
       }}
     >
       <Tab.Screen
-        name="AddDevice"
-        component={AddDeviceScreen}
-        options={{ tabBarLabel: 'Add Device' }}
-      />
-      <Tab.Screen
         name="DeviceList"
         component={DeviceListScreen}
         options={{ tabBarLabel: 'Device List' }}
+      />
+      <Tab.Screen
+        name="AddDevice"
+        component={AddDeviceScreen}
+        options={{ tabBarLabel: 'Add Device' }}
       />
       <Tab.Screen
         name="ScanHosts"
