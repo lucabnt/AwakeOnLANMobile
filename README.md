@@ -1,10 +1,10 @@
 # AwakeOnLANMobile
 
-Android Wake-on-LAN app with home-screen widgets, a Quick Settings shortcut, and encrypted device storage. Maintained by [lucabnt](https://github.com/lucabnt) on the **[personal branch](https://github.com/lucabnt/AwakeOnLANMobile/tree/personal)**, based on [nellogan/AwakeOnLANMobile](https://github.com/nellogan/AwakeOnLANMobile).
+Android Wake-on-LAN app with home-screen widgets, a Quick Settings shortcut, and encrypted device storage. Maintained by [lucabnt](https://github.com/lucabnt) on the **[main branch](https://github.com/lucabnt/AwakeOnLANMobile/tree/main)**, based on [nellogan/AwakeOnLANMobile](https://github.com/nellogan/AwakeOnLANMobile).
 
 ## Install
 
-Download a signed APK from [Releases](https://github.com/lucabnt/AwakeOnLANMobile/releases). Choose **arm64-v8a** for Pixel 9 and most recent Android phones. Android 7+ is required; encrypted backup requires Android 8+.
+Download a signed APK from [Releases](https://github.com/lucabnt/AwakeOnLANMobile/releases). Choose **arm64-v8a** for most recent Android phones. Android 7+ is required; encrypted backup requires Android 8+.
 
 This fork uses its own signing key. If Android refuses an update over another distribution, export any available backup before uninstalling it. Uninstalling deletes saved devices and the local encryption key.
 

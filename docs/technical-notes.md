@@ -1,8 +1,8 @@
-# AwakeOnLANMobile — personal fork
+# AwakeOnLANMobile — maintained fork
 
 Personal Android Wake-on-LAN fork with Keystore-backed encrypted device storage, stricter native input validation, and bounded, cancellable network scans.
 
-Maintained by [lucabnt](https://github.com/lucabnt/AwakeOnLANMobile) on the `personal` branch. Based on [nellogan/AwakeOnLANMobile](https://github.com/nellogan/AwakeOnLANMobile), licensed under GPLv3. This fork preserves the upstream attribution and license.
+Maintained by [lucabnt](https://github.com/lucabnt/AwakeOnLANMobile) on the `main` branch. Based on [nellogan/AwakeOnLANMobile](https://github.com/nellogan/AwakeOnLANMobile), licensed under GPLv3. This fork preserves the upstream attribution and license.
 
 ## Features
 
@@ -107,7 +107,7 @@ Backups can be restored on another phone or installation using the backup passwo
 Prerequisites: Node.js 22.13 or newer, npm 11.17.x, a supported JDK (17 recommended), Android SDK 35, CMake, and NDK `27.1.12297006` as configured in `android/build.gradle`. The tested package manager is npm 11.17.0. Keep the repository's `.npmrc` when installing so local compatibility packages are packed rather than linked.
 
 ```sh
-git clone --branch personal https://github.com/lucabnt/AwakeOnLANMobile.git
+git clone --branch main https://github.com/lucabnt/AwakeOnLANMobile.git
 cd AwakeOnLANMobile
 npm ci
 ```

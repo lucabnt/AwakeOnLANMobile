@@ -1,27 +1,77 @@
-# Releasing the personal fork
+# Releasing AwakeOnLANMobile
 
-Version 1.1.0 adds features to 1.0.2 without a deliberate breaking upgrade, so a minor version is appropriate. Reserve 2.0.0 for an incompatible redesign or migration. Android versionCode must increase independently of the display version. The ABI suffixes are calculated in app/build.gradle.
+The maintained branch and default branch of **lucabnt/AwakeOnLANMobile** is `main` (renamed from `personal`). This is the fork; the upstream repository is nellogan/AwakeOnLANMobile. The existing `master` branch is preserved. No pull request to upstream is needed to publish this fork.
 
-## Prepare
+## Version 1.1.0
 
-1. Keep versionName and package.json / package-lock.json aligned. This release uses 1.1.0 and base versionCode 100100 (ARM64 APK: 10010002).
-2. Run JS/type/lint/dependency checks and build a release. Test the final signed ARM64 APK on a real device, including both themes, save/edit, wake, widget, tile and backup restore.
-3. In Android Studio open android/, then Generate Signed App Bundle / APK, APK, your existing personal keystore, release. Keep the same certificate used by your previous personal build. Never commit signing keys or passwords.
-4. Verify signatures using Android SDK apksigner verify --verbose --print-certs. The Gradle filename may retain -unsigned when signing through the IDE; rename only after verification.
-5. Stage only source/config/docs. Commit and push the final release source to personal. Do not commit APK/AAB files, build folders, Android Studio metadata, private keys or local SDK paths. Gradle wrapper files and package-lock.json belong in Git.
+Use tag **v1.1.0**, display version **1.1.0**, and base Android versionCode **100100**. ABI-specific codes are 10010001 (ARMv7), 10010002 (ARM64), 10010003 (x86), and 10010004 (x86_64). This is a minor feature release relative to 1.0.2; no 2.0 version is needed.
 
-## Publish manually
+The current signed APKs include the header safe-area fix, broadcast fallback and Wake toast. They match the tested unsigned payloads exactly and use the same personal RSA-2048 signing certificate as the previous test build. Branch/documentation/workflow changes do not require rebuilding these APKs. Existing APK App Info may still show a `/tree/personal` web URL: GitHub redirects renamed-branch URLs to `main`.
 
-The CD workflow is manual-only (workflow_dispatch), so creating a version tag does not start a competing release build. It accepts an existing version tag, checks the package version, and produces a draft only. To dispatch it from GitHub, this workflow definition must also be on the repository default branch (for example by making personal the default). Do not run it unless its production signing secrets are configured with the same certificate.
+Distribution package: `release-artifacts/1.1.0/signed/` (ignored by Git).
 
-1. In GitHub Releases, create a draft with tag v1.1.0 targeting the final personal commit. Do not tag master.
-2. Use docs/releases/v1.1.0.md for the title and notes. Update testing claims to match completed physical tests.
-3. Attach the final signed APKs. ARM64 is sufficient for Pixel 9; attach the other verified architectures if distributing broadly. Do not attach keystores or passwords. GitHub provides source archives automatically.
-4. Generate SHA256SUMS.txt from the final signed/renamed files, not the unsigned build. PowerShell: Get-FileHash -Algorithm SHA256 <apk-path>.
-5. Review the draft and publish. For unfinished testing, use a distinct beta version/tag and select pre-release instead.
+## 1. Final phone check
 
-The local release-artifacts/ directory is ignored. Its checksums refer to unsigned build inputs and must be regenerated after signing. Publishing, pushing commits/tags and changing the default branch are separate operations.
+Install the signed `awakeonlanmobile-arm64-v8a-1.1.0.apk` on Pixel 9. Reuse the existing signing key to update the personal test installation without uninstalling. Verify header/menu in both themes, Wake, widget/tile, save/edit, and backup restore. Status requires the actual PC IP in Status IP when Wake targets broadcast. Packet submission does not prove successful boot.
 
-## Contributor attribution
+If application code changes, rebuild and sign again using Android Studio → Generate Signed App Bundle / APK → APK → existing personal keystore → release. Keep keys and passwords outside Git. Re-verify every APK using Android SDK `apksigner verify --verbose --print-certs` and `zipalign -c -P 16 4`. Rename `-unsigned` only after signature validation. Recompute checksums after signing and final renaming.
 
-GitHub's repository contributor list uses the default branch, now personal. The personal commits are authored by lucabnt with the GitHub noreply address. Contributor statistics may take time to refresh after changing the default branch. Profile contribution squares have separate fork eligibility rules.
+## 2. Commit and push release documentation
+
+Only source/config/docs belong in Git. Do not commit APKs, build directories, Android Studio metadata, private signing keys or SDK paths. The Gradle wrapper and package-lock.json do belong in Git.
+
+Review the prepared changes, then run from the repository root:
+
+```sh
+git diff --check
+git diff --stat
+git add README.md docs/RELEASING.md docs/technical-notes.md docs/releases/v1.1.0.md .github/workflows/CI.yml .github/workflows/CD.yml
+git commit -m "chore: align main branch references and prepare v1.1.0 release"
+git push origin main
+```
+
+The local branch already tracks origin/main. The branch rename and default-branch update are complete; the commands above publish only the remaining documentation/workflow changes. Do not force-push. Wait for CI on main and resolve any failure before publishing.
+
+## 3. Create the GitHub release
+
+Open https://github.com/lucabnt/AwakeOnLANMobile/releases/new .
+
+- Tag: **v1.1.0**, create a new tag.
+- Target: **main**, at the final pushed release commit.
+- Title: **v1.1.0 — Widgets, encrypted backups and refreshed design**.
+- Description: copy `docs/releases/v1.1.0.md` (omit its first heading if used as the release title).
+- Attach the four signed APKs and `SHA256SUMS.txt` from `release-artifacts/1.1.0/signed/`.
+- Select latest release for the tested stable release; leave pre-release unchecked.
+- Save as draft, review filenames/notes, then Publish release.
+
+GitHub creates the source ZIP/tarball automatically. Do not attach unsigned APKs, private keys, passwords or the full local build folder. Never reuse an existing tag for different binaries; a subsequent published fix needs a new version/code/tag.
+
+Alternatively, after committing and pushing main, create and push an annotated tag locally:
+
+```sh
+git tag -a v1.1.0 -m "AwakeOnLANMobile v1.1.0"
+git push origin v1.1.0
+```
+
+Then select that existing tag in the release form. Choose either tag-creation method; do not repeat it if v1.1.0 already exists. No tag or release has been created during this preparation.
+
+## Optional GitHub Actions build
+
+CD is manual-only (`workflow_dispatch`), accepts an existing version tag, checks the package version and creates a draft only. It does not run automatically on tag push. The manual Android Studio package is sufficient; no GitHub signing secrets are needed for manual publication.
+
+Only use the automated workflow after configuring the production environment secrets RELEASE_STORE_FILE_BASE64, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS and RELEASE_KEY_PASSWORD with the **same signing certificate**. Select the release tag as workflow input. Do not create a competing manual release with the same tag while that workflow runs.
+
+## Other local clones and contributors
+
+For an older clone still on personal:
+
+```sh
+git branch -m personal main
+git fetch origin --prune
+git branch --set-upstream-to=origin/main main
+git remote set-head origin main
+```
+
+GitHub's repository contributor list uses the default branch, now main. Commits authored with lucabnt's GitHub noreply address remain attributed; statistics may take time to refresh. Profile contribution squares have separate fork eligibility rules.
+
+References: [GitHub branch renaming](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch), [GitHub releases](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository), [Android app signing](https://developer.android.com/studio/publish/app-signing).
