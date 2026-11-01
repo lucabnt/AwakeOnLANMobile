@@ -1,4 +1,5 @@
-import { View, Text, StatusBar, Platform } from 'react-native';
+import { View, Text, StatusBar } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CustomButton } from '../components/CustomButton';
 import { useTheme } from '../contexts/ThemeContext';
 import { fonts, useColors, Colors } from '../styles/base';
@@ -7,9 +8,12 @@ const useCustomHeaderStyles = () => {
   const colors: Colors = useColors();
 
   return {
+    safeArea: {
+      backgroundColor: colors.background,
+    },
     header: {
-      paddingTop: Platform.OS === 'ios' ? 44 : 24,
-      height: Platform.OS === 'ios' ? 60 + 44 : 60 + 24,
+      minHeight: 64,
+      paddingVertical: 8,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -24,16 +28,22 @@ const useCustomHeaderStyles = () => {
     },
     headerTitle: {
       fontSize: 20,
+      flex: 1,
+      marginRight: 12,
       fontWeight: 'bold',
       backgroundColor: colors.background,
       color: colors.text,
     },
     statusBarBackgroundColor: colors.background,
     menuButton: {
-      padding: 10,
+      width: 48,
+      minHeight: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     menuIcon: {
       fontSize: fonts.largeFontSize,
+      lineHeight: 28,
       fontWeight: 'bold',
       color: colors.text,
     },
@@ -49,18 +59,28 @@ export const CustomHeader = ({ onMenuPress }: CustomHeaderProps) => {
   const { isDarkMode } = useTheme();
 
   return (
-    <View style={styles.header}>
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
       <StatusBar
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor={styles.statusBarBackgroundColor}
       />
-      <Text style={styles.headerTitle}>AwakeOnLANMobile</Text>
-      <CustomButton
-        title={'☰'}
-        onPress={onMenuPress}
-        buttonStyle={styles.menuButton}
-        buttonTextStyle={styles.menuIcon}
-      />
-    </View>
+      <View style={styles.header}>
+        <Text
+          style={styles.headerTitle}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
+        >
+          AwakeOnLANMobile
+        </Text>
+        <CustomButton
+          title={'☰'}
+          accessibilityLabel="Open menu"
+          onPress={onMenuPress}
+          buttonStyle={styles.menuButton}
+          buttonTextStyle={styles.menuIcon}
+        />
+      </View>
+    </SafeAreaView>
   );
 };
