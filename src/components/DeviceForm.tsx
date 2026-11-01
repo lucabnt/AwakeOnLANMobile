@@ -33,11 +33,12 @@ const useDeviceFormStyles = () => {
     scrollContainer: {
       flexGrow: 1,
       alignItems: 'center',
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
       paddingBottom: 20,
     },
     formContainer: {
-      padding: 15,
+      paddingVertical: 8,
+      paddingHorizontal: 4,
       width: '100%',
       maxWidth: 600, // Limit width on larger screens
     },
@@ -47,7 +48,7 @@ const useDeviceFormStyles = () => {
       color: colors.text,
     },
     buttonContainer: {
-      paddingVertical: 20,
+      paddingVertical: 8,
       flexDirection: 'row',
       justifyContent: 'space-evenly',
     },
@@ -62,11 +63,11 @@ const useDeviceFormStyles = () => {
       backgroundColor: colors.deleteOrCancelButtonColor,
     },
     errorInput: {
-      borderColor: 'red',
+      borderColor: colors.deleteOrCancelButtonColor,
       borderRadius: 2,
     },
     errorText: {
-      color: 'red',
+      color: colors.deleteOrCancelButtonColor,
       fontSize: fonts.mediumFontSize,
       fontWeight: 'bold',
       marginBottom: 10,

@@ -138,10 +138,11 @@ export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
   const renderItem = ({ item }: { item: DeviceType }) => (
     <View style={styles.itemContainer}>
       <View style={styles.textContainer}>
-        <Text style={styles.text}>Name: {item.name || 'N/A'}</Text>
+        <Text style={styles.name}>{item.name || 'Saved device'}</Text>
         <Text style={styles.text}>MAC: {item.macAddr}</Text>
-        <Text style={styles.text}>IP: {item.ipAddr || 'N/A'}</Text>
-        <Text style={styles.text}>Port: {item.port || 'N/A'}</Text>
+        <Text style={styles.text}>
+          IP: {item.ipAddr || 'Default broadcast'} · UDP {item.port || '9'}
+        </Text>
         <Text style={styles.text}>
           Password: {item.passwd ? 'Configured' : 'Not configured'}
         </Text>
@@ -152,7 +153,7 @@ export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
           title="Wake"
           onPress={() => wakeButton(item)}
           buttonStyle={styles.wakeButton}
-          buttonTextStyle={styles.buttonText}
+          buttonTextStyle={styles.wakeText}
         />
 
         <CustomButton
@@ -179,7 +180,7 @@ export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
           title="Delete"
           onPress={() => deleteButton(item)}
           buttonStyle={styles.deleteButton}
-          buttonTextStyle={styles.buttonText}
+          buttonTextStyle={styles.deleteText}
         />
       </View>
     </View>

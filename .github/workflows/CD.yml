@@ -1,9 +1,12 @@
-name: CD
+name: Prepare signed release draft
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag on the tested personal commit (e.g. v1.1.0)
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -12,93 +15,55 @@ jobs:
   build-and-release:
     environment: production
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
-
-      - name: Install OpenJDK 17
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+      - name: Check release version
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
         run: |
-          sudo apt-get update
-          sudo apt-get install -y openjdk-17-jdk
-
-      - name: Download npm packages
+          node -e 'if (process.env.RELEASE_TAG !== "v" + require("./package.json").version) throw new Error("Tag/version mismatch")'
+      - name: Install and verify dependencies
         run: |
           npm install --global npm@11.17.0 --ignore-scripts
           npm ci
           npm run audit:dependencies
           npm run test:dependencies
-
-      - name: Decode keystore file
-        run: |
-          echo "${{ secrets.RELEASE_STORE_FILE_BASE64 }}" | base64 -d > release.keystore
-
-      - name: Build the apk files
+          npm test -- --runInBand
+          npx tsc --noEmit
+          npm run lint
+      - name: Restore signing key
         env:
-          RELEASE_STORE_FILE: ${{ github.workspace }}/release.keystore
+          STORE_BASE64: ${{ secrets.RELEASE_STORE_FILE_BASE64 }}
+        run: |
+          test -n "$STORE_BASE64" || { echo "Configure production signing secrets first"; exit 1; }
+          umask 077
+          printf '%s' "$STORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+      - name: Build signed APKs
+        working-directory: android
+        env:
+          RELEASE_STORE_FILE: ${{ runner.temp }}/release.keystore
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: |
-          cd android
-          ./gradlew generateCodegenArtifactsFromSchema
-          bash ./repro_build_patch.sh
-          ./gradlew assembleRelease
-
-      - name: Create Release
-        id: create_release
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Prepare checksums and release draft
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
         run: |
-          tag_name="${{ github.ref_name }}"
-          release_name="Release ${tag_name}"
-          body="Automated release for ${tag_name}"
-
-          # The JSON payload is defined using a heredoc, which allows for clean formatting and proper variable expansion. 
-          # The -d @- tells curl to read the data from standard input, which is provided by the heredoc.       
-          response=$(curl -L \
-            -X POST \
-            -H "Accept: application/vnd.github+json" \
-            -H "Authorization: Bearer $GITHUB_TOKEN" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/repos/${{ github.repository }}/releases \
-            -d @- <<EOF
-          {
-            "tag_name": "$tag_name",
-            "target_commitish": "master",
-            "name": "$release_name",
-            "body": "$body",
-            "draft": false,
-            "prerelease": false,
-            "generate_release_notes": true
-          }
-          EOF
-          )
-
-          # Extract the value of the top-level "upload_url" key
-          upload_url=$(echo "$response" | grep -o '"upload_url":\s*"[^"{]*' | sed 's/.*"upload_url":\s*"//')
-          echo "upload_url=$upload_url" >> $GITHUB_OUTPUT
-
-      - name: Upload apk files
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          upload_url=${{ steps.create_release.outputs.upload_url }}
-          for file in ./android/app/build/outputs/apk/release/*.apk; do
-            if [ -f "$file" ]; then
-              filename=$(basename "$file")
-              curl -L \
-                -X POST \
-                -H "Accept: application/vnd.github+json" \
-                -H "Authorization: Bearer $GITHUB_TOKEN" \
-                -H "X-GitHub-Api-Version: 2022-11-28" \
-                -H "Content-Type: application/octet-stream" \
-                "$upload_url?name=$filename" \
-                --data-binary "@$file"
-            fi
-          done
+          cd android/app/build/outputs/apk/release
+          sha256sum *.apk > SHA256SUMS.txt
+          cd "$GITHUB_WORKSPACE"
+          gh release create "$RELEASE_TAG" --verify-tag --draft --title "$RELEASE_TAG" --notes-file "docs/releases/$RELEASE_TAG.md" android/app/build/outputs/apk/release/*.apk android/app/build/outputs/apk/release/SHA256SUMS.txt
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.keystore"

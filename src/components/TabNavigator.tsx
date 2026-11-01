@@ -12,15 +12,18 @@ const useTabNavigatorStyles = () => {
 
   return {
     tabBar: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
+      borderTopColor: colors.borderColor,
+      paddingTop: 6,
     },
     tabBarLabel: {
       flex: 1,
-      fontSize: fonts.mediumFontSize,
+      fontSize: fonts.mediumFontSize - 2,
+      fontWeight: '600',
       textAlignVertical: 'center',
     },
     tabBarActiveTintColor: colors.secondary,
-    tabBarInactiveTintColor: colors.primary,
+    tabBarInactiveTintColor: colors.muted,
     tabBarIconStyle: {
       height: 0,
       flex: 0,

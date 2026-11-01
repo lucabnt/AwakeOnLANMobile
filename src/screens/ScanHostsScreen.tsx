@@ -98,11 +98,11 @@ const useDynamicStyles = () => {
       backgroundColor: colors.borderColor,
     },
     inputError: {
-      borderColor: 'red',
+      borderColor: colors.deleteOrCancelButtonColor,
       borderWidth: 2,
     },
     errorText: {
-      color: 'red',
+      color: colors.deleteOrCancelButtonColor,
       fontSize: fonts.mediumFontSize,
       fontWeight: 'bold',
       marginBottom: 10,

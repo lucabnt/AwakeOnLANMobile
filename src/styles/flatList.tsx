@@ -1,71 +1,46 @@
 import { StyleSheet } from 'react-native';
-import { fonts, useColors, Colors } from '../styles/base';
+import { useColors } from './base';
 
 export const useDeviceFlatListStyles = () => {
-  const colors: Colors = useColors();
-
+  const colors = useColors();
+  const action = {
+    minHeight: 48,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    flexGrow: 1,
+    flexBasis: '20%' as const,
+  };
   return StyleSheet.create({
-    list: {
-      width: '100%',
-    },
+    list: { width: '100%' },
     itemContainer: {
-      flexDirection: 'row',
-      padding: 15,
-      borderWidth: 2,
+      padding: 16,
+      borderWidth: 1,
       borderColor: colors.borderColor,
-      borderRadius: 8,
-      backgroundColor: colors.background,
-      marginVertical: 10,
+      borderRadius: 20,
+      backgroundColor: colors.surface,
+      marginBottom: 12,
     },
-    textContainer: {
-      flex: 1,
-      flexGrow: 1,
-      flexDirection: 'column',
-      justifyContent: 'flex-start',
-      alignItems: 'flex-start', // Left-align text
-      paddingRight: 15, // Space between text and buttons
-    },
-    text: {
-      fontSize: fonts.mediumFontSize,
-      color: colors.text,
-      marginBottom: 8,
-      textAlign: 'left',
-    },
-    buttonContainer: {
-      gap: 8,
-      flexDirection: 'column',
-      justifyContent: 'space-between', // Center buttons vertically
-      alignItems: 'center',
-      width: 80,
-    },
-    buttonText: {
-      color: colors.text,
-      fontSize: fonts.mediumFontSize,
-      textAlign: 'center',
+    textContainer: { flexShrink: 1, gap: 4, marginBottom: 12 },
+    name: { fontSize: 20, fontWeight: '700', color: colors.text },
+    text: { fontSize: 14, color: colors.muted, lineHeight: 21 },
+    buttonContainer: { gap: 8, flexDirection: 'row', flexWrap: 'wrap' },
+    buttonText: { color: colors.text, fontSize: 14, fontWeight: '600' },
+    wakeText: { color: colors.onAccent, fontSize: 15, fontWeight: '700' },
+    deleteText: {
+      color: colors.deleteOrCancelButtonColor,
+      fontSize: 14,
+      fontWeight: '600',
     },
     wakeButton: {
-      backgroundColor: '#40826D', // faded (darkish) green
-      paddingVertical: 8,
-      borderRadius: 5,
-      width: '100%', // Full width of button container
-      alignItems: 'center', // Center text in button
-      justifyContent: 'center', // Center text vertically in button
+      ...action,
+      flexBasis: '100%',
+      minHeight: 56,
+      backgroundColor: colors.primary,
     },
-    editOrSubmitButton: {
-      backgroundColor: colors.saveOrEditButtonColor,
-      paddingVertical: 8,
-      borderRadius: 5,
-      width: '100%', // Full width of button container
-      alignItems: 'center', // Center text in button
-      justifyContent: 'center', // Center text vertically in button
-    },
-    deleteButton: {
-      backgroundColor: colors.deleteOrCancelButtonColor,
-      paddingVertical: 8,
-      borderRadius: 5,
-      width: '100%', // Full width of button container
-      alignItems: 'center', // Center text in button
-      justifyContent: 'center', // Center text vertically in button
-    },
+    editOrSubmitButton: { ...action, backgroundColor: colors.background },
+    deleteButton: { ...action, backgroundColor: colors.background },
   });
 };

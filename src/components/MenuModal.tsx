@@ -25,22 +25,23 @@ const useModalStyles = () => {
       alignItems: 'flex-end' as const,
     },
     modalContent: {
-      width: 250,
+      width: '88%',
+      maxWidth: 340,
       marginTop: 60,
       marginRight: 10,
-      borderRadius: 8,
+      borderRadius: 20,
       padding: 10,
       elevation: 5,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.3,
       shadowRadius: 4,
-      backgroundColor: colors.primary,
+      backgroundColor: colors.surface,
     },
     modalItem: {
       padding: 15,
       borderBottomWidth: 1,
-      borderBottomColor: 'rgba(0,0,0,0.1)',
+      borderBottomColor: colors.borderColor,
     },
     modalItemText: {
       fontSize: fonts.mediumFontSize,
@@ -112,7 +113,7 @@ export const MenuModal = ({ visible, onClose }: MenuModalProps) => {
             <Text style={styles.contactText}>
               License: GPLv3
               {'\n'}
-              Source: https://github.com/lucabnt/AwakeOnLANMobile
+              Source: github.com/lucabnt/AwakeOnLANMobile/tree/personal
               {'\n'}
               Report Issues: https://github.com/lucabnt/AwakeOnLANMobile/issues
               {'\n'}

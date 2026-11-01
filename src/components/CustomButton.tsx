@@ -5,7 +5,13 @@ import {
   StyleProp,
   ViewStyle,
   TextStyle,
+  StyleSheet,
 } from 'react-native';
+
+const styles = StyleSheet.create({
+  touchTarget: { minHeight: 48, justifyContent: 'center' },
+  disabled: { opacity: 0.45 },
+});
 
 interface CustomButtonProps {
   arg?: string; // Optional arg
@@ -26,7 +32,9 @@ export const CustomButton: React.FC<CustomButtonProps> = ({
 }) => {
   return (
     <TouchableOpacity
-      style={buttonStyle}
+      style={[styles.touchTarget, buttonStyle, disabled && styles.disabled]}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
       onPress={() => onPress(arg)}
       disabled={disabled}
     >

@@ -21,28 +21,37 @@ export interface Colors {
   placeholderText: string;
   saveOrEditButtonColor: string;
   deleteOrCancelButtonColor: string;
+  surface: string;
+  muted: string;
+  onAccent: string;
 }
 
 export const lightTheme: Colors = {
-  background: '#e6e6e6',
-  text: '#212121',
-  primary: '#49b5e6',
-  secondary: '#000767',
-  borderColor: '#b0bec5',
-  placeholderText: '#b9b9b9',
-  saveOrEditButtonColor: '#007aff',
-  deleteOrCancelButtonColor: '#ff4444',
+  background: '#F2F6F7',
+  surface: '#FFFFFF',
+  text: '#142D36',
+  muted: '#526873',
+  primary: '#007F7A',
+  secondary: '#006D69',
+  borderColor: '#C8D7DC',
+  placeholderText: '#617780',
+  saveOrEditButtonColor: '#007F7A',
+  deleteOrCancelButtonColor: '#B93845',
+  onAccent: '#FFFFFF',
 };
 
 export const darkTheme: Colors = {
-  background: '#121212',
-  text: '#e0e0e0',
-  primary: '#1976d2',
-  secondary: '#49b5e6',
-  borderColor: '#546e7a',
-  placeholderText: '#727272',
-  saveOrEditButtonColor: '#007aff',
-  deleteOrCancelButtonColor: '#ff4444',
+  background: '#0D171D',
+  surface: '#17262E',
+  text: '#E6F0F3',
+  muted: '#A4BBC4',
+  primary: '#54D8CB',
+  secondary: '#54D8CB',
+  borderColor: '#354C57',
+  placeholderText: '#A4BBC4',
+  saveOrEditButtonColor: '#54D8CB',
+  deleteOrCancelButtonColor: '#FFADB4',
+  onAccent: '#10272E',
 };
 
 export const useColors = () => {
@@ -60,40 +69,42 @@ export const useBaseStyles = () => {
       alignItems: 'center',
       // Platform-specific padding to play nice with Modal since it implicitly accounts for the
       // StatusBar with no control over it
-      paddingTop: 20,
-      paddingBottom: 20,
-      paddingHorizontal: 10,
-      backgroundColor: colors.primary,
+      paddingTop: 12,
+      paddingBottom: 8,
+      paddingHorizontal: 16,
+      backgroundColor: colors.background,
     },
     title: {
       fontSize: fonts.largeFontSize,
       fontWeight: 'bold',
-      marginBottom: 20,
-      textAlign: 'center',
+      marginBottom: 16,
+      textAlign: 'left',
       color: colors.text,
     },
     input: {
       width: '100%',
-      borderWidth: 2,
+      borderWidth: 1,
       borderColor: colors.borderColor,
-      backgroundColor: colors.background,
+      backgroundColor: colors.surface,
       color: colors.text,
-      padding: 10,
-      marginBottom: 10,
-      borderRadius: 5,
+      padding: 12,
+      minHeight: 48,
+      marginBottom: 12,
+      borderRadius: 12,
       fontSize: fonts.mediumFontSize,
     },
     text: {
       color: colors.text,
     },
     button: {
-      borderRadius: 5,
-      padding: 8,
+      borderRadius: 12,
+      padding: 12,
+      minHeight: 48,
       justifyContent: 'center',
       alignItems: 'center',
     },
     buttonText: {
-      color: colors.text,
+      color: colors.onAccent,
       fontWeight: 'bold',
       textAlign: 'center',
     },

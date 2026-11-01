@@ -72,3 +72,14 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Distribution artifacts and private signing keys
+*.apk
+*.aab
+*.apks
+*.jks
+*.p12
+*.pfx
+/android/app/release/
+/android/app/debug/
+/release-artifacts/
