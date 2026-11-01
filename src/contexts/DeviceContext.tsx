@@ -30,9 +30,10 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({
   const ready = useRef(false);
   const mounted = useRef(false);
   const loading = useRef(false);
+  const backupActive = useRef(false);
   const writes = useRef<Promise<void>>(Promise.resolve());
 
-  const retryLoad = useCallback(async () => {
+  const reload = useCallback(async () => {
     if (loading.current) return;
     loading.current = true;
     ready.current = false;
@@ -56,6 +57,13 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
+  const retryLoad = useCallback((): Promise<void> => {
+    if (backupActive.current) return Promise.resolve();
+    const operation = writes.current.then(reload);
+    writes.current = operation.catch(() => {});
+    return operation;
+  }, [reload]);
+
   useEffect(() => {
     mounted.current = true;
     retryLoad();
@@ -68,7 +76,7 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({
   const persist = (
     change: (previous: DeviceType[]) => DeviceType[],
   ): Promise<void> => {
-    if (!ready.current)
+    if (!ready.current || backupActive.current)
       return Promise.reject(new Error('Device storage is not ready.'));
     const operation = writes.current.then(async () => {
       if (!ready.current) throw new Error('Device storage is not ready.');
@@ -94,8 +102,9 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({
     persist(previous => previous.filter(item => item.id !== id));
 
   const manageBackup = (): Promise<void> => {
-    if (!ready.current)
+    if (!ready.current || backupActive.current)
       return Promise.reject(new Error('Device storage is not ready.'));
+    backupActive.current = true;
     const operation = writes.current.then(async () => {
       ready.current = false;
       if (mounted.current) setIsLoading(true);
@@ -103,7 +112,11 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({
         await deviceActions().openBackup();
       } finally {
         // Native import and JS writes share this barrier. Reload even after cancellation.
-        await retryLoad();
+        try {
+          await reload();
+        } finally {
+          backupActive.current = false;
+        }
       }
     });
     writes.current = operation.catch(() => {});

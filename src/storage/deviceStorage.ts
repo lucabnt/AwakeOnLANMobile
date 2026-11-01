@@ -27,6 +27,7 @@ export const validateDevices = (value: unknown): DeviceType[] => {
       typeof item !== 'object' ||
       typeof item.id !== 'string' ||
       !item.id ||
+      item.id.includes('\0') ||
       item.id.length > 128 ||
       ids.has(item.id) ||
       typeof item.macAddr !== 'string' ||
@@ -68,6 +69,14 @@ export const validateDevices = (value: unknown): DeviceType[] => {
     ) {
       throw new Error('Invalid device archive.');
     }
+    // Count UTF-8 bytes, matching both native senders (JS length counts UTF-16).
+    let passwordBytes = 0;
+    for (const character of item.passwd || '') {
+      const code = character.codePointAt(0)!;
+      passwordBytes +=
+        code <= 0x7f ? 1 : code <= 0x7ff ? 2 : code <= 0xffff ? 3 : 4;
+    }
+    if (passwordBytes > 1024) throw new Error('Invalid device archive.');
     // Explicitly select known fields; never persist arbitrary properties from an archive.
     return {
       id: item.id,

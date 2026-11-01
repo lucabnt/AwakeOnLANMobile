@@ -93,3 +93,20 @@ test('preserves status probe settings and rejects malformed probe addresses or p
     expect(() => validateDevices([{ ...configured, statusPort }])).toThrow();
   }
 });
+
+test('matches native ID and UTF-8 password limits before writing an archive', async () => {
+  await expect(saveDevices([{ ...device, id: 'bad\0id' }])).rejects.toThrow();
+  await expect(
+    saveDevices([{ ...device, passwd: 'é'.repeat(513) }]),
+  ).rejects.toThrow();
+  await expect(
+    saveDevices([{ ...device, passwd: '😀'.repeat(257) }]),
+  ).rejects.toThrow();
+  expect(backend.save).not.toHaveBeenCalled();
+  expect(
+    validateDevices([{ ...device, passwd: 'é'.repeat(512) }])[0].passwd,
+  ).toHaveLength(512);
+  expect(
+    validateDevices([{ ...device, passwd: '😀'.repeat(256) }])[0].passwd,
+  ).toHaveLength(512);
+});

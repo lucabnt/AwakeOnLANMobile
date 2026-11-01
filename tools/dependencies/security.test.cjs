@@ -163,8 +163,12 @@ test('updated XML parser preserves Android manifest attributes used by the CLI',
     parsed.manifest.application['@_android:name'],
     '.MainApplication',
   );
-  assert.equal(
-    parsed.manifest.application.activity['@_android:name'],
-    '.MainActivity',
+  const activities = [parsed.manifest.application.activity].flat();
+  const main = activities.find(
+    activity =>
+      activity['intent-filter']?.action?.['@_android:name'] ===
+      'android.intent.action.MAIN',
   );
+  assert.equal(main?.['@_android:name'], '.MainActivity');
+  assert.equal(main?.['@_android:exported'], 'true');
 });

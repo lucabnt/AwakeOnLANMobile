@@ -167,9 +167,11 @@ export const ScanHostsScreen = () => {
         setScanResult({ host: inputValue, items: results });
         setInputValue('');
       }
-    } catch (error) {
+    } catch (scanError) {
       if (mounted.current)
-        setError(error instanceof Error ? error.message : String(error));
+        setError(
+          scanError instanceof Error ? scanError.message : String(scanError),
+        );
     } finally {
       scanning.current = false;
       if (mounted.current) setIsLoading(false);

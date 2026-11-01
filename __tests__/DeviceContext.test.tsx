@@ -102,6 +102,12 @@ test('blocks edits during native backup and reloads imported records before allo
   });
   expect(openBackup).toHaveBeenCalledTimes(1);
   expect(state.isLoading).toBe(true);
+  await act(async () => {
+    await state.retryLoad();
+  });
+  expect(load).toHaveBeenCalledTimes(1);
+  expect(state.isLoading).toBe(true);
+  await expect(state.manageBackup()).rejects.toThrow();
   await expect(state.addDevice({ ...pc, id: 'blocked' })).rejects.toThrow();
   const imported = { ...pc, id: 'imported' };
   load.mockResolvedValue([pc, imported]);
@@ -118,6 +124,32 @@ test('blocks edits during native backup and reloads imported records before allo
     'imported',
     'new',
   ]);
+});
+
+test('reload waits for an in-flight save before reading the archive', async () => {
+  await mount();
+  let finishSave!: () => void;
+  save.mockImplementationOnce(
+    () =>
+      new Promise<void>(resolve => {
+        finishSave = resolve;
+      }),
+  );
+  let saving!: Promise<void>;
+  let reloading!: Promise<void>;
+  await act(async () => {
+    saving = state.addDevice({ ...pc, id: 'second' });
+  });
+  await act(async () => {
+    reloading = state.retryLoad();
+  });
+  expect(load).toHaveBeenCalledTimes(1);
+  load.mockResolvedValue([pc, { ...pc, id: 'second' }]);
+  await act(async () => {
+    finishSave();
+    await Promise.all([saving, reloading]);
+  });
+  expect(state.devices.map(item => item.id)).toEqual(['pc', 'second']);
 });
 
 test('reloads storage and remains usable when backup is cancelled or fails', async () => {
