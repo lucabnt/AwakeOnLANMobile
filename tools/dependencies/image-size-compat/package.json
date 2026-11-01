@@ -1,0 +1,10 @@
+{
+  "name": "@awakeonlan/image-size-compat",
+  "version": "1.0.1",
+  "private": true,
+  "license": "GPL-3.0-only",
+  "main": "index.cjs",
+  "dependencies": {
+    "image-size-modern": "npm:image-size@2.0.4"
+  }
+}

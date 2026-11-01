@@ -1,105 +1,100 @@
 #include "NativeModule.h"
+#include <react/bridging/Array.h>
+#include <react/bridging/Promise.h>
 
 namespace facebook::react
 {
 
-// Helper function to convert std::vector<std::string> to jsi::Array
-jsi::Array VectorToJsiArray(jsi::Runtime &rt, const std::vector<std::string> &vec)
+NativeModule::NativeModule(std::shared_ptr<CallInvoker> jsInvoker) : NativeModuleCxxSpec(std::move(jsInvoker)) {}
+
+NativeModule::~NativeModule()
 {
-    jsi::Array arr = jsi::Array(rt, vec.size());
-    for (size_t i = 0; i < vec.size(); ++i)
+    workerState_->alive = false;
+    if (scanControl_) scanControl_->cancelled = true;
+    if (scanThread_.joinable()) scanThread_.join();
+}
+
+bool NativeModule::ValidMac(jsi::Runtime &, std::string input)
+{
+    return input.find('\0') == std::string::npos && ValidateMACAddr(input.c_str());
+}
+
+bool NativeModule::ValidIp(jsi::Runtime &, std::string input)
+{
+    const int version = input.find('\0') == std::string::npos ? DetermineIPVersion(input.c_str()) : -1;
+    return version == 4 || version == 6;
+}
+
+void NativeModule::SendWOL(jsi::Runtime &rt, std::string mac, std::string ip, std::string port, std::string password)
+{
+    try
     {
-        arr.setValueAtIndex(rt, i, jsi::String::createFromUtf8(rt, vec[i]));
+        for (const auto *value : {&mac, &ip, &port, &password})
+            if (value->find('\0') != std::string::npos) throw std::invalid_argument("NUL characters are not allowed.");
+        AWakeOnLAN packet{ip.empty() ? nullptr : ip.c_str(), port.empty() ? nullptr : port.c_str(), mac.c_str(),
+                          password.empty() ? nullptr : password.c_str(), false};
+        packet.SendMagicPacket();
     }
-    return arr;
-}
-
-// Helper function to convert std::vector<std::vector<std::string>> to jsi::Array of jsi::Array
-jsi::Array NestedVectorToJsiArray(jsi::Runtime &rt, const std::vector<std::vector<std::string>> &nestedVec)
-{
-    jsi::Array outerArr = jsi::Array(rt, nestedVec.size());
-    for (size_t i = 0; i < nestedVec.size(); ++i)
+    catch (const std::exception &error)
     {
-        jsi::Array innerArr = VectorToJsiArray(rt, nestedVec[i]);
-        outerArr.setValueAtIndex(rt, i, innerArr);
+        throw jsi::JSError(rt, error.what());
     }
-    return outerArr;
 }
 
-NativeModule::NativeModule(std::shared_ptr<CallInvoker> jsInvoker) : NativeModuleCxxSpec(std::move(jsInvoker))
+void NativeModule::CancelScan(jsi::Runtime &)
 {
-}
-
-bool NativeModule::ValidMac(jsi::Runtime &rt, std::string input)
-{
-    return ValidateMACAddr(const_cast<char *>(input.c_str()));
-}
-
-bool NativeModule::ValidIp(jsi::Runtime &rt, std::string input)
-{
-    int valid = DetermineIPVersion(input.c_str());
-
-    return valid == 4 || valid == 6;
-}
-
-void NativeModule::SendWOL(jsi::Runtime &rt, std::string mac_addr, std::string ip_addr, std::string port,
-                           std::string passwd)
-{
-    // Note the order of arguments is different
-    AWakeOnLAN a_wake_on_lan{ip_addr.length() ? const_cast<char *>(ip_addr.c_str()) : nullptr,
-                             port.length() ? const_cast<char *>(port.c_str()) : nullptr,
-                             mac_addr.length() ? const_cast<char *>(mac_addr.c_str()) : nullptr,
-                             passwd.length() ? const_cast<char *>(passwd.c_str()) : nullptr, false};
-
-    a_wake_on_lan.SendMagicPacket();
+    if (scanControl_) scanControl_->cancelled = true;
 }
 
 jsi::Value NativeModule::ScanHosts(jsi::Runtime &rt, std::string input, std::string mode_selected)
 {
-    Mode mode = mode_selected == "Ping" ? Mode::PING : Mode::CONNECT;
-
-    jsi::Function promise_constructor = rt.global().getPropertyAsFunction(rt, "Promise");
-    jsi::PropNameID promise_propnameid = jsi::PropNameID::forAscii(rt, "Promise");
-
-    jsi::HostFunctionType host_promise = [=, this](jsi::Runtime &rt, const jsi::Value &thisValue,
-                                                   const jsi::Value *args, size_t count) -> jsi::Value {
-        std::shared_ptr<jsi::Value> resolve = std::make_shared<jsi::Value>(rt, args[0]);
-        std::shared_ptr<jsi::Value> reject = std::make_shared<jsi::Value>(rt, args[1]);
-
-        std::thread([&rt, jsInvoker = jsInvoker_, resolve, reject, input, mode]() {
+    // React Native's AsyncPromise retains callbacks weakly outside the JS thread.
+    // Workers never own raw runtime references or JSI values across runtime teardown.
+    AsyncPromise<std::vector<std::vector<std::string>>> promise(rt, jsInvoker_);
+    auto result = promise.get(rt);
+    if (workerState_->running)
+    {
+        promise.reject(Error("A scan is already running."));
+        return result;
+    }
+    if (mode_selected != "Ping" && mode_selected != "TCP Connect")
+    {
+        promise.reject(Error("Invalid scan mode."));
+        return result;
+    }
+    if (scanThread_.joinable()) scanThread_.join();
+    const Mode mode = mode_selected == "Ping" ? Mode::PING : Mode::CONNECT;
+    scanControl_ = std::make_shared<ScanControl>();
+    workerState_->running = true;
+    try
+    {
+        scanThread_ = std::thread([promise, input, mode, state = workerState_, control = scanControl_]() mutable {
+            std::vector<std::vector<std::string>> hosts;
+            std::string error;
             try
             {
-                NetScan net_scan{};
-                std::vector<std::vector<std::string>> avail_hosts =
-                    net_scan.DetermineAndRunOperation(const_cast<char *>(input.c_str()), mode);
-                // If any errors are encountered they will be caught via catch and its error message sent as a
-                // rejection. On the Javascript side, the rejection will also be caught via catch
-                jsInvoker->invokeAsync([&rt, resolve, arr = std::move(avail_hosts)]() {
-                    jsi::Array js_array = NestedVectorToJsiArray(rt, arr);
-                    resolve->asObject(rt).asFunction(rt).call(rt, js_array);
-                });
+                hosts = NetScan(control).DetermineAndRunOperation(input, mode);
             }
-            catch (const std::runtime_error &err)
+            catch (const std::exception &exception)
             {
-                std::string err_string{err.what()};
-                jsInvoker->invokeAsync([&rt, reject, e = std::move(err_string)]() {
-                    reject->asObject(rt).asFunction(rt).call(rt, jsi::String::createFromUtf8(rt, e));
-                });
+                error = exception.what();
             }
-            catch (const std::invalid_argument &err)
+            catch (...)
             {
-                std::string err_string{err.what()};
-                jsInvoker->invokeAsync([&rt, reject, e = std::move(err_string)]() {
-                    reject->asObject(rt).asFunction(rt).call(rt, jsi::String::createFromUtf8(rt, e));
-                });
+                error = "Scan failed.";
             }
-        }).detach();
-
-        return {};
-    };
-
-    jsi::Function js_promise_func = jsi::Function::createFromHostFunction(rt, promise_propnameid, 0, host_promise);
-    return promise_constructor.callAsConstructor(rt, js_promise_func);
-};
+            state->running = false;
+            if (!state->alive) return;
+            if (error.empty()) promise.resolve(std::move(hosts));
+            else promise.reject(Error(std::move(error)));
+        });
+    }
+    catch (const std::exception &)
+    {
+        workerState_->running = false;
+        promise.reject(Error("Could not start scan."));
+    }
+    return result;
+}
 
 } // namespace facebook::react

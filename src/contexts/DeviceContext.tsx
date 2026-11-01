@@ -1,85 +1,108 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from 'react';
 import { Alert } from 'react-native';
-import RNFS from 'react-native-fs';
 import { DeviceType, DeviceContextType } from '../types/device';
+import { loadDevices, saveDevices } from '../storage/deviceStorage';
 
 const DeviceContext = createContext<DeviceContextType | undefined>(undefined);
 
 export const useDeviceContext = () => {
   const context = useContext(DeviceContext);
-  if (!context) {
+  if (!context)
     throw new Error('useDeviceContext must be used within a DeviceProvider');
-  }
   return context;
 };
 
-const DEVICE_FILE = `${RNFS.DocumentDirectoryPath}/devices.json`;
-
-// todo change devices from array to dictionary -- low prio not many entries expected
 export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [devices, setDevices] = useState<DeviceType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  const current = useRef<DeviceType[]>([]);
+  const ready = useRef(false);
+  const mounted = useRef(false);
+  const loading = useRef(false);
+  const writes = useRef<Promise<void>>(Promise.resolve());
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadDevices = async () => {
-      try {
-        const exists = await RNFS.exists(DEVICE_FILE);
-        if (exists && isMounted) {
-          const data = await RNFS.readFile(DEVICE_FILE);
-          setDevices(JSON.parse(data));
-        }
-      } catch (error) {
-        console.error('Error loading devices:', error);
+  const retryLoad = useCallback(async () => {
+    if (loading.current) return;
+    loading.current = true;
+    ready.current = false;
+    setIsLoading(true);
+    setStorageError(null);
+    try {
+      const saved = await loadDevices();
+      if (mounted.current) {
+        current.current = saved;
+        setDevices(saved);
+        ready.current = true;
       }
-    };
-
-    loadDevices();
-
-    return () => {
-      isMounted = false;
-    };
+    } catch {
+      if (mounted.current)
+        setStorageError(
+          'Could not open protected device storage. Your saved data has not been replaced. Retry or check the installation.',
+        );
+    } finally {
+      loading.current = false;
+      if (mounted.current) setIsLoading(false);
+    }
   }, []);
 
-  const saveDevicesToFile = async (updatedDevices: DeviceType[]) => {
-    try {
-      await RNFS.writeFile(DEVICE_FILE, JSON.stringify(updatedDevices));
-    } catch (error) {
-      console.error('Error saving devices:', error);
-    }
+  useEffect(() => {
+    mounted.current = true;
+    retryLoad();
+    return () => {
+      mounted.current = false;
+      ready.current = false;
+    };
+  }, [retryLoad]);
+
+  const persist = (
+    change: (previous: DeviceType[]) => DeviceType[],
+  ): Promise<void> => {
+    if (!ready.current)
+      return Promise.reject(new Error('Device storage is not ready.'));
+    const operation = writes.current.then(async () => {
+      if (!ready.current) throw new Error('Device storage is not ready.');
+      const updated = change(current.current);
+      await saveDevices(updated);
+      current.current = updated;
+      if (mounted.current) setDevices(updated);
+    });
+    // A failed write must not poison subsequent retries or alter the in-memory list.
+    writes.current = operation.catch(() => {});
+    return operation;
   };
 
-  const addDevice = (device: DeviceType) => {
-    const updatedDevices = [...devices, device];
-    setDevices(updatedDevices);
-    saveDevicesToFile(updatedDevices);
-    Alert.alert(
-      'Device saved successfully!',
-      '',
-      [{ text: 'OK', onPress: () => {} }],
-      { cancelable: false },
+  const addDevice = async (device: DeviceType) => {
+    await persist(previous => [...previous, device]);
+    Alert.alert('Device saved successfully!');
+  };
+  const updateDevice = (id: string, device: DeviceType) =>
+    persist(previous =>
+      previous.map(item => (item.id === id ? { ...device, id } : item)),
     );
-  };
-
-  const updateDevice = (id: string, updatedDevice: DeviceType) => {
-    const updatedDevices = devices.map(device =>
-      device.id === id ? updatedDevice : device,
-    );
-    setDevices(updatedDevices);
-    saveDevicesToFile(updatedDevices);
-  };
-
-  const deleteDevice = (id: string) => {
-    const updatedDevices = devices.filter(device => device.id !== id);
-    setDevices(updatedDevices);
-    saveDevicesToFile(updatedDevices);
-  };
+  const deleteDevice = (id: string) =>
+    persist(previous => previous.filter(item => item.id !== id));
 
   return (
     <DeviceContext.Provider
-      value={{ devices, addDevice, updateDevice, deleteDevice }}
+      value={{
+        devices,
+        isLoading,
+        storageError,
+        retryLoad,
+        addDevice,
+        updateDevice,
+        deleteDevice,
+      }}
     >
       {children}
     </DeviceContext.Provider>

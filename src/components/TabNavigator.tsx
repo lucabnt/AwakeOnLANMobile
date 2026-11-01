@@ -1,17 +1,16 @@
 import React from 'react';
-import { StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AddDeviceScreen } from '../screens/AddDeviceScreen';
 import { DeviceListScreen } from '../screens/DeviceListScreen';
 import { ScanHostsScreen } from '../screens/ScanHostsScreen';
-import { fonts, getColors, Colors } from '../styles/base';
+import { fonts, useColors, Colors } from '../styles/base';
 
 const Tab = createBottomTabNavigator();
 
 const useTabNavigatorStyles = () => {
-  const colors: Colors = getColors();
+  const colors: Colors = useColors();
 
-  return StyleSheet.create({
+  return {
     tabBar: {
       backgroundColor: colors.background,
     },
@@ -26,7 +25,7 @@ const useTabNavigatorStyles = () => {
       height: 0,
       flex: 0,
     },
-  });
+  } as const;
 };
 
 export const TabNavigator = () => {

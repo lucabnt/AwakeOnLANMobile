@@ -1,83 +1,125 @@
-# AwakeOnLANMobile
+# AwakeOnLANMobile — personal fork
 
-[![CI](https://github.com/nellogan/AwakeOnLANMobile/actions/workflows/CI.yml/badge.svg)](https://github.com/nellogan/AwakeOnLANMobile/actions/workflows/CI.yml)
-[![CD](https://github.com/nellogan/AwakeOnLANMobile/actions/workflows/CD.yml/badge.svg)](https://github.com/nellogan/AwakeOnLANMobile/actions/workflows/CD.yml)
-[![Release Version](https://img.shields.io/github/v/release/nellogan/awakeonlanmobile?sort=semver)](https://github.com/nellogan/AwakeOnLANMobile/releases)
+Personal Android Wake-on-LAN fork with Keystore-backed encrypted device storage, stricter native input validation, and bounded, cancellable network scans.
 
-[![Android](https://img.shields.io/badge/Android-3DDC84?logo=android&logoColor=white)](#)
-[![React Native](https://img.shields.io/badge/React_Native-%2320232a.svg?logo=react&logoColor=%2361DAFB)](#)
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=fff)](#)
-[![C++](https://img.shields.io/badge/C++-%2300599C.svg?logo=c%2B%2B&logoColor=white)](#)
+Maintained by [lucabnt](https://github.com/lucabnt/AwakeOnLANMobile) on the `personal` branch. Based on [nellogan/AwakeOnLANMobile](https://github.com/nellogan/AwakeOnLANMobile), licensed under GPLv3. This fork preserves the upstream attribution and license.
 
-## Overview
+## Features
 
-AwakeOnLANMobile enables you to send Wake On LAN ([WOL](https://en.wikipedia.org/wiki/Wake-on-LAN)) packets, allowing you to remotely wake up your devices over either a local area network (LAN) or over the internet. It supports IPv4 and IPv6 addresses. The application offers several features:
+- Send Wake-on-LAN magic packets to IPv4 or IPv6 destinations, with configurable UDP port and optional WOL password.
+- Add, edit, and delete saved devices. Android device records, including passwords, are encrypted at rest.
+- Scan a single IPv4 address or subnet from `/24` to `/32`, using ICMP ping or a TCP connection to port 443.
+- Cancel an active scan. Each scan is limited to 256 addresses and 30 seconds; only one native scan runs at a time.
+- Light and dark themes. No advertisements, accounts, or cloud storage.
 
-### Features
+The application uses React Native / TypeScript with C++ TurboModules for networking and a Kotlin module for Android encrypted storage. The iOS directory is an upstream scaffold: protected storage is implemented for Android only. Other platforms fail explicitly instead of saving device data in plaintext.
 
-- **Open Source**: Licensed under GPLv3 License with zero advertisements and no account creation necessary.
-- **Local Storage**: Add, edit, or delete device information for easy access.
-- **Network Scanning**: Discover devices on your LAN or over the internet using either an IPv4 address or CIDR notation for subnets (e.g., 192.168.1.1 or 192.168.1.1/24). Choose between PING and TCP connect (sent to Port 443) packets for scanning. PING will require 1 second per IP address, while TCP connect will be faster. TCP Connect is similar to nmap's stealth scan but not as stealthy. This tool is useful for checking if the Wake On LAN packet was successful. Scanning only supports IPv4 addresses. NOTE: Some network cards may take up to a few minutes to respond after system boot.
-- **Theme Toggle**: Switch between a light and dark mode theme to customize the appearance based on your preferences. The selected theme will be persisted even after shutting down the application.
+## Security changes in this fork
 
-Developed with React Native (Typescript) and utilizes C++ turbo modules for native level socket access when sending and receiving packets. The ./cpp directory contains lightly modified code from:
+### Protected device storage
 
-- [AwakeOnLAN](https://github.com/nellogan/awakeonlan)
-- [NetScan](https://github.com/nellogan/netscan)
+The entire device archive is stored as authenticated AES-256-GCM ciphertext in `noBackupFilesDir/devices.enc`. A fresh random IV is generated for every write. The non-exportable key is generated and used through the [Android Keystore](https://developer.android.com/privacy-and-security/keystore); hardware backing depends on the device. No new JavaScript crypto dependencies are required.
 
-These are Linux commandline utilities that can be used in lieu of this application if your device supports a terminal, such as Termux or the new Android AVF Linux terminal. The file naming scheme differs for NativeModule.cpp and NativeModule.h as this scheme is needed to support React Native's turbo C++ bridging. The other C++ code kept its original file naming scheme since they are from pre-existing repositories.
+Writes use Android `AtomicFile` and are read back and verified before the old plaintext archive is deleted. Saves are serialized, and the interface confirms success only after persistence completes. A failed save leaves the form available for retry and does not update the displayed device list.
 
-## Demo Video
+On the first successful load, the old private `files/devices.json` archive is validated and migrated automatically. IDs, settings, and password contents are preserved. Unknown properties are discarded. Corrupt data, duplicate IDs, invalid addresses or ports, and oversized archives are rejected rather than silently overwritten. Limits are 1 MiB per archive and 1,000 devices; text fields are bounded. Native WOL passwords are limited to 1,024 UTF-8 bytes.
 
-[awakeonlanmobile_demo.webm](https://github.com/user-attachments/assets/04d7949e-2e7e-445c-bb2a-33e31e8d2d00)
+If reading, decryption, or migration fails, editing is blocked and the device list offers a retry. An existing encrypted file is authoritative: a decryption failure never falls back to an old plaintext file, and a missing key is never silently regenerated over an existing encrypted archive.
 
-## Prerequisites
+Passwords are masked in the form and excluded from device details and send confirmations. Storage errors use generic messages without logging archive contents. The light/dark theme preference remains a separate, non-sensitive JSON file. Android application backup remains disabled.
 
-NOTE: You can directly install the release .apk file if downloaded and opened with an android device. You can skip the prerequisites below.
+### Native networking
 
-- Properly installed Android Studio: Ensure that you have Android Studio set up correctly on your development machine. This is required for building, testing, and deploying AwakeOnLANMobile to an Android device.
-- Device capable of installing packages from Android Studio: Make sure your Android device supports installing applications directly from Android Studio. If your device has developer options enabled, you can enable USB debugging to allow your computer to install apps on it through a USB connection.
+- MAC addresses must contain exactly six hexadecimal bytes, compact or separated consistently by `:` or `-`. Parsing does not mutate the caller's string.
+- Ports must be entirely decimal and in `1–65535`. CIDR prefixes must be entirely decimal and in `24–32`; oversized numbers cannot escape the scan thread as uncaught conversion exceptions.
+- Socket descriptors have a single owner and close automatically, including during exceptions. Failed sends cannot double-close a descriptor that another operation has reused.
+- Native send errors are surfaced to JavaScript. Failed sends no longer show a success confirmation.
+- TCP probes use nonblocking sockets and short polling intervals. A timeout alone is not treated as evidence that a host is online.
+- Ping runs with literal arguments and no shell. Cancellation and deadlines terminate and reap its child process. The worker is cancelled and joined when the native module is destroyed.
+- Reverse DNS lookups are omitted so an unbounded name lookup cannot stall cancellation or the scan deadline. Results contain IP addresses; the hostname field is empty.
 
-## Installation
+### Dependency security
 
-### Install release .apk file directly on android device
+The original npm audit reported 39 affected dependency entries, including 4 critical findings. The updated lockfile audit on **2026-11-01 reports zero known npm vulnerabilities**, including development dependencies. The CLI is updated to the corrected 19.1.2 release while React Native remains at 0.80.0 and the native screen/safe-area libraries retain their verified versions.
 
-1. Download the appropriate architecture .apk file from the latest release from this link: [Releases](https://github.com/nellogan/AwakeOnLANMobile/releases)
-2. Tap the .apk file and follow the prompts
+Compatible transitive updates are locked, and `fast-xml-parser` is pinned to its corrected 5.11.2 release. Small local adapters expose the patched `minimatch` 11.0.3 and `image-size` 2.0.4 implementations through the CommonJS APIs required by existing tooling. Since no corrected `deepmerge` release is available, a reviewed MIT-licensed local patch prevents prototype poisoning in both input-copying paths. These are actual implementation replacements; advisories are not ignored or filtered. See [dependency compatibility and maintenance notes](./tools/dependencies/README.md) for the code, rationale, upstream references, and removal conditions.
 
-### Install release .apk file to your computer then use adb to install on android device
+CI checks the full npm audit at the low-severity threshold, as well as application and dependency regression tests. A clean audit is a snapshot of the advisory database, not a guarantee that all code or Android/C++ dependencies are vulnerability-free.
 
-1. Download the appropriate architecture .apk file
-2. Substitute for appropriate abi and architecture: `adb install awakeonlanmobile-${abi}-${variant.versionName}.apk`
+### Limits of protection
 
-### Build from source and install:
+Encryption protects saved data at rest. The running app must decrypt device settings to use them; a compromised device or app process may still access those settings. Deleting the old plaintext file is not a guarantee of forensic erasure on flash storage.
 
-1. Clone this repository: `git clone https://github.com/nellogan/awakeonlanmobile.git`
-2. Navigate into the project directory: `cd awakeonlanmobile`
-3. Install dependencies: `npm install` or `yarn install`
+Wake-on-LAN is a UDP protocol, not an encrypted remote-access channel. An optional WOL/SecureOn password is sent as part of the magic packet; it is not your Windows or Linux login password. Prefer a trusted LAN or VPN and configure the destination for your network.
 
-#### For a development build:
+## Configure your PC
 
-4. Start the Metro Bundler: `npx react-native start` or `yarn react-native start`
-5. Open another terminal and run: `npx react-native run-android` or `yarn react-native run-android`
+1. Enable Wake-on-LAN in the PC's firmware and network adapter settings.
+2. Save the network adapter's MAC address in the app.
+3. Prefer an explicit destination IP or your LAN's directed broadcast address, for example `192.168.1.255` on a `192.168.1.0/24` network. The upstream fallback `192.255.255.255` is retained for compatibility and is not appropriate for every network. The default UDP port is `9`.
+4. Tap **Wake**. “Packet sent” confirms local UDP submission, not that the PC has booted. Use a scan or check the PC separately.
 
-#### For a release build (NOTE: .apk files must be signed even if directly installed with `adb install`):
+Scan only networks you own or are authorized to test. For slower ping scans, use a smaller subnet if the 30-second deadline is reached. A host may be awake while refusing or filtering the probe, so absence from scan results does not prove it is powered off.
 
-5. Create a keystore: `keytool -genkey -v -keystore /full/path/to/keystorename.keystore -alias alias -keyalg RSA -keysize 4096 -validity 10000`
-6. Source the environment variables:
+## Build and install this fork
 
-   `source <(echo "export RELEASE_STORE_FILE=/full/path/to/keystorename.keystore"; echo "export RELEASE_STORE_PASSWORD=password"; echo "export RELEASE_KEY_ALIAS=alias"; echo "export RELEASE_KEY_PASSWORD=password")`
+Prerequisites: Node.js 22.13 or newer, npm 11.17.x, a supported JDK (17 recommended), Android SDK 35, CMake, and NDK `27.1.12297006` as configured in `android/build.gradle`. The tested package manager is npm 11.17.0. Keep the repository's `.npmrc` when installing so local compatibility packages are packed rather than linked.
 
-7. Build: `npx react-native build-android --mode=release` or `yarn react-native build-android --mode=release`
-8. Assemble .apk files: `cd android && ./gradlew assembleRelease`
-9. Install the appropriate .apk file: `adb install app/build/outputs/apk/release/awakeonlanmobile-${abi}-${variant.versionName}.apk`
+```sh
+git clone --branch personal https://github.com/lucabnt/AwakeOnLANMobile.git
+cd AwakeOnLANMobile
+npm ci
+```
 
-## License
+For development, start Metro with `npm start`, then run `npm run android` in a second terminal with an emulator or Android device connected.
 
-This project is licensed under the [GPLv3 License](./LICENSE).
+For an unsigned release build:
 
-## Future Development
+```sh
+cd android
+./gradlew assembleRelease
+```
 
-- The application is intended to be uploaded to F-Droid in the future.
-- Considering adding iOS support in the future.
-- Stay tuned for updates!
+On Windows use `gradlew.bat`. APKs are written under `android/app/build/outputs/apk/release/`, split by architecture. Unsigned APKs must be signed before installation. For a signed build, set `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD` in the build environment. Keep signing credentials outside the repository.
+
+**Preserving existing devices:** an in-place update requires the same application ID and signing certificate as your installed app. A personally signed build generally cannot update an upstream-signed APK. Uninstalling the old app deletes its private records and Keystore keys; automatic migration only works when its private data survives the update. Do not uninstall expecting the migration to recover it.
+
+Upstream release APKs do not include the changes in this branch. Build this fork to use its security changes.
+
+## Verification
+
+```sh
+npm test -- --runInBand
+npm run test:dependencies
+npm run audit:dependencies
+npx tsc --noEmit
+npm run lint
+```
+
+JavaScript tests cover archive validation, migration failures, blocked writes after load failures, serialized saves, password exposure in displayed text, and failed-send feedback. Dependency regressions also test prototype-poisoning payloads, glob amplification, malformed image chunks, legacy tool APIs, Metro image handling, and Android manifest parsing.
+
+The standalone native regression suite runs on Linux with a C++20 compiler and uses only loopback networking:
+
+```sh
+c++ -std=c++20 -Wall -Wextra -Werror -fsanitize=address,undefined -pthread \
+  -Icpp cpp/tests/security_tests.cpp cpp/utils.cpp cpp/a_wake_on_lan.cpp cpp/net_scan.cpp \
+  -o /tmp/awakeonlan-security-tests
+/tmp/awakeonlan-security-tests
+```
+
+It checks malformed input, numeric overflow, scan cancellation/deadlines, the actual UDP magic packet, and descriptor lifetime. Android instrumentation tests exercise real Keystore encryption, random IVs, migration, tamper detection, lost keys, and interrupted-write recovery:
+
+```sh
+cd android
+./gradlew connectedDebugAndroidTest
+```
+
+Use a disposable emulator or test device. Also manually verify migration from an existing installation, failed saves, network errors, and scans cancelled while running.
+
+## Scope and credits
+
+Home-screen widgets and changes to the default tab are planned separately and are not included in this security update.
+
+The networking implementation derives from [AwakeOnLAN](https://github.com/nellogan/awakeonlan) and [NetScan](https://github.com/nellogan/netscan), by the upstream author. The original application is [AwakeOnLANMobile](https://github.com/nellogan/AwakeOnLANMobile).
+
+See [LICENSE](./LICENSE) for the GPLv3 license.

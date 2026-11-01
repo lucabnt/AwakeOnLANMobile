@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, FlatList, Alert } from 'react-native';
 import { useDeviceContext } from '../contexts/DeviceContext';
 import { CustomButton } from './CustomButton';
-import { dynamicDeviceFlatListStyles } from '../styles/flatList';
+import { useDeviceFlatListStyles } from '../styles/flatList';
 import NativeModule from '../../specs/NativeModule';
 import { DeviceType } from '../types/device';
 
@@ -12,7 +12,7 @@ interface DeviceFlatListProps {
 
 export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
   const { devices, deleteDevice } = useDeviceContext(); // Destructure only the necessary functions from useDeviceContext() hook
-  const styles = dynamicDeviceFlatListStyles();
+  const styles = useDeviceFlatListStyles();
 
   const buildMessage = (item: DeviceType) => {
     const fields = [];
@@ -20,15 +20,23 @@ export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
     if (item.macAddr) fields.push(`MAC: ${item.macAddr}`);
     if (item.ipAddr) fields.push(`IP: ${item.ipAddr}`);
     if (item.port) fields.push(`Port: ${item.port}`);
-    if (item.passwd) fields.push(`Passwd: ${item.passwd}`);
     return fields.join('\n');
   };
 
   const wakeButton = (item: DeviceType) => {
     try {
-      NativeModule.SendWOL(item.macAddr, item.ipAddr, item.port, item.passwd);
-    } catch (error) {
-      console.error('An error occurred:', error);
+      NativeModule.SendWOL(
+        item.macAddr,
+        item.ipAddr || '',
+        item.port || '',
+        item.passwd || '',
+      );
+    } catch {
+      Alert.alert(
+        'Wake On LAN failed',
+        'The packet could not be sent. Check the device settings and network.',
+      );
+      return;
     }
 
     Alert.alert('Wake On LAN packet sent to:', buildMessage(item), [
@@ -42,7 +50,19 @@ export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
       `Are you sure you want to delete ${item.name || 'this device'}?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', onPress: () => deleteDevice(item.id) },
+        {
+          text: 'Delete',
+          onPress: async () => {
+            try {
+              await deleteDevice(item.id);
+            } catch {
+              Alert.alert(
+                'Delete failed',
+                'The device could not be deleted. Please retry.',
+              );
+            }
+          },
+        },
       ],
     );
   };
@@ -54,7 +74,9 @@ export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
         <Text style={styles.text}>MAC: {item.macAddr}</Text>
         <Text style={styles.text}>IP: {item.ipAddr || 'N/A'}</Text>
         <Text style={styles.text}>Port: {item.port || 'N/A'}</Text>
-        <Text style={styles.text}>Passwd: {item.passwd || 'N/A'}</Text>
+        <Text style={styles.text}>
+          Password: {item.passwd ? 'Configured' : 'Not configured'}
+        </Text>
       </View>
 
       <View style={styles.buttonContainer}>

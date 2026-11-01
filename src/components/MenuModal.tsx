@@ -10,16 +10,10 @@ import {
 } from 'react-native';
 import { CustomButton } from '../components/CustomButton';
 import { useTheme } from '../contexts/ThemeContext';
-import {
-  fonts,
-  lightTheme,
-  darkTheme,
-  getColors,
-  Colors,
-} from '../styles/base';
+import { fonts, useColors, Colors } from '../styles/base';
 
-const dynamicModalStyles = () => {
-  const colors: Colors = getColors();
+const useModalStyles = () => {
+  const colors: Colors = useColors();
 
   return StyleSheet.create({
     modalOverlay: {
@@ -66,7 +60,7 @@ interface MenuModalProps {
 
 export const MenuModal = ({ visible, onClose }: MenuModalProps) => {
   const { isDarkMode, toggleTheme } = useTheme();
-  const styles = dynamicModalStyles();
+  const styles = useModalStyles();
   const { version } = packageJson;
 
   const toggleThemeButton = () => {

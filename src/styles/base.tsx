@@ -1,4 +1,3 @@
-import { StyleSheet } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
 export interface FontSizes {
@@ -46,15 +45,15 @@ export const darkTheme: Colors = {
   deleteOrCancelButtonColor: '#ff4444',
 };
 
-export const getColors = () => {
-  const { isDarkMode }: boolean = useTheme();
+export const useColors = () => {
+  const { isDarkMode } = useTheme();
   return isDarkMode === false ? lightTheme : darkTheme;
 };
 
-export const dynamicBaseStyles = () => {
-  const colors: Colors = getColors();
+export const useBaseStyles = () => {
+  const colors: Colors = useColors();
 
-  return StyleSheet.create({
+  return {
     container: {
       flex: 1,
       justifyContent: 'center',
@@ -79,7 +78,6 @@ export const dynamicBaseStyles = () => {
       borderColor: colors.borderColor,
       backgroundColor: colors.background,
       color: colors.text,
-      placeholderTextColor: colors.placeholderText,
       padding: 10,
       marginBottom: 10,
       borderRadius: 5,
@@ -101,5 +99,5 @@ export const dynamicBaseStyles = () => {
     },
     saveOrEditButtonColor: colors.saveOrEditButtonColor, // blue
     deleteOrCancelButtonColor: colors.deleteOrCancelButtonColor, // red
-  });
+  } as const;
 };

@@ -8,16 +8,17 @@ import {
   Platform,
   Keyboard,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { DeviceType } from '../types/device';
 import { CustomButton } from '../components/CustomButton';
-import { fonts, getColors, Colors, dynamicBaseStyles } from '../styles/base';
+import { fonts, useColors, Colors, useBaseStyles } from '../styles/base';
 import NativeModule from '../../specs/NativeModule';
 
-const dynamicDeviceFormStyles = () => {
-  const colors: Colors = getColors();
-  const baseStyles = dynamicBaseStyles();
+const useDeviceFormStyles = () => {
+  const colors: Colors = useColors();
+  const baseStyles = useBaseStyles();
 
   return StyleSheet.create({
     input: baseStyles.input,
@@ -75,9 +76,10 @@ const dynamicDeviceFormStyles = () => {
 
 interface DeviceFormProps {
   initialDevice?: DeviceType;
-  onSubmit: (device: DeviceType) => void;
+  onSubmit: (device: DeviceType) => Promise<void>;
   onCancel?: () => void;
   title?: string;
+  disabled?: boolean;
 }
 
 export const DeviceForm = ({
@@ -85,6 +87,7 @@ export const DeviceForm = ({
   onSubmit,
   onCancel,
   title,
+  disabled = false,
 }: DeviceFormProps) => {
   const [name, setName] = useState<string>(initialDevice?.name || '');
   const [macAddr, setMacAddr] = useState<string>(initialDevice?.macAddr || '');
@@ -93,9 +96,11 @@ export const DeviceForm = ({
   const [ipAddrError, setIpAddrError] = useState<string | null>(null);
   const [port, setPort] = useState<string>(initialDevice?.port || '');
   const [passwd, setPasswd] = useState<string>(initialDevice?.passwd || '');
+  const [isSaving, setIsSaving] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
-  const styles = dynamicDeviceFormStyles();
+  const styles = useDeviceFormStyles();
+  const colors = useColors();
 
   // Reset scroll position when screen is focused
   useFocusEffect(
@@ -125,13 +130,14 @@ export const DeviceForm = ({
     };
   }, []);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (disabled || isSaving) return;
     if (!macAddr.trim()) {
       setMacAddrError('MAC Address is required');
       return;
     }
 
-    const validMac = NativeModule.ValidMac(macAddr);
+    const validMac = NativeModule.ValidMac(macAddr.trim());
     if (!validMac) {
       setMacAddrError(
         'Invalid MAC Address, valid: AB-CD-EF-01-23-45, abcdef012345, or ab:cd:ef:01:23:45',
@@ -140,7 +146,7 @@ export const DeviceForm = ({
       setMacAddrError(null);
     }
 
-    const validIp = NativeModule.ValidIp(ipAddr);
+    const validIp = NativeModule.ValidIp(ipAddr.trim());
     if (ipAddr && !validIp) {
       setIpAddrError('Invalid IPv4 or IPv6 address');
     } else {
@@ -151,22 +157,32 @@ export const DeviceForm = ({
       return;
     }
 
-    onSubmit({
-      id: initialDevice?.id || Date.now().toString(),
-      name: name.trim() || '',
-      macAddr: macAddr.trim(),
-      ipAddr: ipAddr.trim() || '',
-      port: port.trim() || '',
-      passwd: passwd.trim() || '',
-    });
+    setIsSaving(true);
+    try {
+      await onSubmit({
+        id: initialDevice?.id || Date.now().toString(),
+        name: name.trim() || '',
+        macAddr: macAddr.trim(),
+        ipAddr: ipAddr.trim() || '',
+        port: port.trim() || '',
+        passwd,
+      });
 
-    setName('');
-    setMacAddr('');
-    setMacAddrError(null);
-    setIpAddr('');
-    setIpAddrError(null);
-    setPort('');
-    setPasswd('');
+      setName('');
+      setMacAddr('');
+      setMacAddrError(null);
+      setIpAddr('');
+      setIpAddrError(null);
+      setPort('');
+      setPasswd('');
+    } catch {
+      Alert.alert(
+        'Save failed',
+        'The device could not be saved securely. Your changes are still in the form. Please retry.',
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handlePortInput = (text: string) => {
@@ -213,15 +229,16 @@ export const DeviceForm = ({
           <Text style={styles.label}>Name (Optional)</Text>
           <TextInput
             style={styles.input}
-            placeholderTextColor={styles.input.placeholderTextColor}
+            placeholderTextColor={colors.placeholderText}
             value={name}
+            maxLength={1024}
             onChangeText={setName}
             placeholder="Enter Name"
           />
           <Text style={styles.label}>MAC Address (Required)</Text>
           <TextInput
             style={[styles.input, macAddrError && styles.errorInput]}
-            placeholderTextColor={styles.input.placeholderTextColor}
+            placeholderTextColor={colors.placeholderText}
             value={macAddr}
             onChangeText={setMacAddr}
             maxLength={17}
@@ -231,7 +248,7 @@ export const DeviceForm = ({
           <Text style={styles.label}>IP Address (Optional)</Text>
           <TextInput
             style={[styles.input, ipAddrError && styles.errorInput]}
-            placeholderTextColor={styles.input.placeholderTextColor}
+            placeholderTextColor={colors.placeholderText}
             value={ipAddr}
             onChangeText={handleIpAddrInput}
             maxLength={40}
@@ -242,7 +259,7 @@ export const DeviceForm = ({
           <TextInput
             style={styles.input}
             inputMode={'numeric'}
-            placeholderTextColor={styles.input.placeholderTextColor}
+            placeholderTextColor={colors.placeholderText}
             value={port}
             onChangeText={handlePortInput}
             maxLength={5}
@@ -251,14 +268,21 @@ export const DeviceForm = ({
           <Text style={styles.label}>Password (Optional)</Text>
           <TextInput
             style={styles.input}
-            placeholderTextColor={styles.input.placeholderTextColor}
+            placeholderTextColor={colors.placeholderText}
             value={passwd}
+            secureTextEntry
+            autoComplete="off"
+            importantForAutofill="no"
+            autoCorrect={false}
+            autoCapitalize="none"
+            maxLength={256}
             onChangeText={setPasswd}
             placeholder="Enter Password"
           />
           <View style={styles.buttonContainer}>
             <CustomButton
               title="Save"
+              disabled={disabled || isSaving}
               onPress={handleSubmit}
               buttonStyle={styles.editButton}
               buttonTextStyle={styles.buttonText}
@@ -266,6 +290,7 @@ export const DeviceForm = ({
             {onCancel && (
               <CustomButton
                 title="Cancel"
+                disabled={isSaving}
                 onPress={onCancel}
                 buttonStyle={styles.deleteButton}
                 buttonTextStyle={styles.buttonText}

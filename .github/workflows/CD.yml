@@ -29,7 +29,10 @@ jobs:
 
       - name: Download npm packages
         run: |
-          npm install
+          npm install --global npm@11.17.0 --ignore-scripts
+          npm ci
+          npm run audit:dependencies
+          npm run test:dependencies
 
       - name: Decode keystore file
         run: |

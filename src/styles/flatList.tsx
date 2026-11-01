@@ -1,8 +1,8 @@
 import { StyleSheet } from 'react-native';
-import { fonts, getColors, Colors } from '../styles/base';
+import { fonts, useColors, Colors } from '../styles/base';
 
-export const dynamicDeviceFlatListStyles = () => {
-  const colors: Colors = getColors();
+export const useDeviceFlatListStyles = () => {
+  const colors: Colors = useColors();
 
   return StyleSheet.create({
     list: {

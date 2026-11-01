@@ -17,13 +17,11 @@
 namespace facebook::react
 {
 
-jsi::Array VectorToJsiArray(jsi::Runtime &rt, const std::vector<std::string> &vec);
-jsi::Array NestedVectorToJsiArray(jsi::Runtime &rt, const std::vector<std::vector<std::string>> &nestedVec);
-
 class NativeModule : public NativeModuleCxxSpec<NativeModule>
 {
   public:
     NativeModule(std::shared_ptr<CallInvoker> jsInvoker);
+    ~NativeModule();
 
     bool ValidMac(jsi::Runtime &rt, std::string input);
 
@@ -32,6 +30,17 @@ class NativeModule : public NativeModuleCxxSpec<NativeModule>
     void SendWOL(jsi::Runtime &rt, std::string mac_addr, std::string ip_addr, std::string port, std::string passwd);
 
     jsi::Value ScanHosts(jsi::Runtime &rt, std::string input, std::string mode_selected);
+    void CancelScan(jsi::Runtime &rt);
+
+  private:
+    struct WorkerState
+    {
+        std::atomic<bool> alive{true};
+        std::atomic<bool> running{false};
+    };
+    std::shared_ptr<WorkerState> workerState_ = std::make_shared<WorkerState>();
+    std::shared_ptr<ScanControl> scanControl_;
+    std::thread scanThread_;
 };
 
 } // namespace facebook::react

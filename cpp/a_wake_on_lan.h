@@ -16,21 +16,21 @@
 class AWakeOnLAN
 {
   public:
-    explicit AWakeOnLAN(char *ip_addr_arg, char *port_arg, char *mac_arg, char *passwd_arg, bool ipv6_toggle);
-    ~AWakeOnLAN();
+    explicit AWakeOnLAN(const char *ip_addr_arg, const char *port_arg, const char *mac_arg,
+                        const char *passwd_arg, bool ipv6_toggle);
 
     void SendMagicPacket();
 
     // private:
-    void SetIPAddr(char *ip_addr_arg, bool ipv6_toggle_val);
+    void SetIPAddr(const char *ip_addr_arg, bool ipv6_toggle_val);
 
     void ConfigSocketSettings();
 
-    void SetPort(char *port_arg);
+    void SetPort(const char *port_arg);
 
-    void SetMac(char *mac_arg);
+    void SetMac(const char *mac_arg);
 
-    void SetPasswd(char *passwd_arg);
+    void SetPasswd(const char *passwd_arg);
 
     void CreateMagicPacket();
 
@@ -46,11 +46,11 @@ class AWakeOnLAN
 
     int domain;
 
-    int socket_fd;
+    SocketHandle socket_fd;
 
-    sockaddr_in server_address;
+    sockaddr_in server_address{};
 
-    sockaddr_in6 server_address_v6;
+    sockaddr_in6 server_address_v6{};
 };
 
 #endif

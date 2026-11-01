@@ -1,5 +1,4 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
 import RNFS from 'react-native-fs';
 
 interface ThemeContextType {

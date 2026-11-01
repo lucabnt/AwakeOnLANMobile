@@ -7,7 +7,10 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "test:dependencies": "node --test tools/dependencies/security.test.cjs",
+    "audit:dependencies": "npm audit --audit-level=low",
+    "refresh:dependencies": "node tools/dependencies/refresh-lock.cjs"
   },
   "codegenConfig": {
     "name": "AppSpecs",
@@ -18,20 +21,20 @@
     }
   },
   "dependencies": {
-    "@react-navigation/bottom-tabs": "^7.3.15",
+    "@react-navigation/bottom-tabs": "7.3.15",
     "react": "19.1.0",
     "react-native": "0.80.0",
     "react-native-fs": "^2.20.0",
-    "react-native-safe-area-context": "^5.4.1",
-    "react-native-screens": "^4.11.1"
+    "react-native-safe-area-context": "5.4.1",
+    "react-native-screens": "4.11.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
-    "@react-native-community/cli": "19.0.0",
-    "@react-native-community/cli-platform-android": "19.0.0",
-    "@react-native-community/cli-platform-ios": "19.0.0",
+    "@react-native-community/cli": "19.1.2",
+    "@react-native-community/cli-platform-android": "19.1.2",
+    "@react-native-community/cli-platform-ios": "19.1.2",
     "@react-native/babel-preset": "0.80.0",
     "@react-native/eslint-config": "0.80.0",
     "@react-native/metro-config": "0.80.0",
@@ -43,9 +46,20 @@
     "jest": "^29.6.3",
     "prettier": "2.8.8",
     "react-test-renderer": "19.1.0",
-    "typescript": "5.0.4"
+    "typescript": "5.0.4",
+    "minimatch": "file:./tools/dependencies/minimatch-compat",
+    "image-size": "file:./tools/dependencies/image-size-compat",
+    "deepmerge": "file:./tools/dependencies/deepmerge-hardened"
   },
   "engines": {
-    "node": ">=18"
-  }
+    "node": ">=22.13.0",
+    "npm": ">=11.17.0 <12"
+  },
+  "overrides": {
+    "deepmerge": "$deepmerge",
+    "fast-xml-parser": "5.11.2",
+    "minimatch": "$minimatch",
+    "image-size": "$image-size"
+  },
+  "packageManager": "npm@11.17.0"
 }

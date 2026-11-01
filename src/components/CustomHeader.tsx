@@ -1,16 +1,12 @@
-import { View, Text, StatusBar, StyleSheet, Platform } from 'react-native';
+import { View, Text, StatusBar, Platform } from 'react-native';
 import { CustomButton } from '../components/CustomButton';
 import { useTheme } from '../contexts/ThemeContext';
-import { fonts, getColors, Colors } from '../styles/base';
-
-interface Fonts {
-  largeFontSize: number;
-}
+import { fonts, useColors, Colors } from '../styles/base';
 
 const useCustomHeaderStyles = () => {
-  const colors: Colors = getColors();
+  const colors: Colors = useColors();
 
-  return StyleSheet.create({
+  return {
     header: {
       paddingTop: Platform.OS === 'ios' ? 44 : 24,
       height: Platform.OS === 'ios' ? 60 + 44 : 60 + 24,
@@ -40,7 +36,7 @@ const useCustomHeaderStyles = () => {
       fontWeight: 'bold',
       color: colors.text,
     },
-  });
+  } as const;
 };
 
 interface CustomHeaderProps {

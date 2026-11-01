@@ -9,7 +9,10 @@ export type DeviceType = {
 
 export type DeviceContextType = {
   devices: DeviceType[];
-  addDevice: (device: DeviceType) => void;
-  updateDevice: (id: string, updatedDevice: DeviceType) => void;
-  deleteDevice: (id: string) => void;
+  isLoading: boolean;
+  storageError: string | null;
+  retryLoad: () => Promise<void>;
+  addDevice: (device: DeviceType) => Promise<void>;
+  updateDevice: (id: string, updatedDevice: DeviceType) => Promise<void>;
+  deleteDevice: (id: string) => Promise<void>;
 };

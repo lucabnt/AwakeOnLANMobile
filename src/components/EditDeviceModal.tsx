@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Modal } from 'react-native';
 import { useDeviceContext } from '../contexts/DeviceContext';
 import { DeviceForm } from './DeviceForm';
-import { dynamicBaseStyles } from '../styles/base';
+import { useBaseStyles } from '../styles/base';
 import { DeviceType } from '../types/device';
 
 interface EditDeviceModalProps {
@@ -14,8 +14,8 @@ export const EditDeviceModal = ({
   editingDevice,
   setEditingDevice,
 }: EditDeviceModalProps) => {
-  const { devices, updateDevice } = useDeviceContext();
-  const styles = dynamicBaseStyles();
+  const { updateDevice } = useDeviceContext();
+  const styles = useBaseStyles();
 
   return (
     <Modal
@@ -27,8 +27,8 @@ export const EditDeviceModal = ({
         {editingDevice && (
           <DeviceForm
             initialDevice={editingDevice}
-            onSubmit={device => {
-              updateDevice(device.id, device);
+            onSubmit={async device => {
+              await updateDevice(device.id, device);
               setEditingDevice(null);
             }}
             onCancel={() => setEditingDevice(null)}

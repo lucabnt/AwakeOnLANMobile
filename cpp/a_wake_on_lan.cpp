@@ -1,166 +1,89 @@
 #include "a_wake_on_lan.h"
 
-#define MAC_ADDR_BYTE_SZ 6
-// #define DEFAULT_IPV4_BCAST "255.255.255.255"
-#define DEFAULT_IPV4_BCAST "192.255.255.255" // Android restricts sending broadcasts to 255.255.255.255
+// Keep the existing fallback for compatibility. Prefer an explicit LAN broadcast address.
+#define DEFAULT_IPV4_BCAST "192.255.255.255"
 #define DEFAULT_IPV6_MCAST "ff02::1"
 
-AWakeOnLAN::AWakeOnLAN(char *ip_addr_arg, char *port_arg, char *mac_arg, char *passwd_arg, bool ipv6_toggle)
+AWakeOnLAN::AWakeOnLAN(const char *ip, const char *port_arg, const char *mac_arg,
+                       const char *password, bool ipv6)
 {
-    SetIPAddr(ip_addr_arg, ipv6_toggle);
+    SetIPAddr(ip, ipv6);
     SetPort(port_arg);
     SetMac(mac_arg);
-    ConfigSocketSettings();
-    if (passwd_arg)
-    {
-        SetPasswd(passwd_arg);
-    }
+    if (password) SetPasswd(password);
     CreateMagicPacket();
+    ConfigSocketSettings();
 }
 
-AWakeOnLAN::~AWakeOnLAN()
+void AWakeOnLAN::SetIPAddr(const char *ip, bool ipv6)
 {
-    if (socket_fd > 0)
-    {
-        close(socket_fd);
-    }
-}
-
-void AWakeOnLAN::SetIPAddr(char *ip_addr_arg, bool ipv6_toggle_val)
-{
-    if (ip_addr_arg == nullptr)
-    {
-        ip_addr = ipv6_toggle_val ? DEFAULT_IPV6_MCAST : DEFAULT_IPV4_BCAST;
-        ////        if (ipv6_toggle_val)
-        ////        {
-        ////            ip_addr = ipv6_toggle_val ? DEFAULT_IPV6_MCAST : ;
-        ////        }
-        ////        char broadcast_addr[INET_ADDRSTRLEN] = {0};
-        ////        if (GetBroadcastAddr(broadcast_addr) == -1) {
-        ////            ip_addr = DEFAULT_IPV4_BCAST;
-        ////       } else {
-        ////            ip_addr = broadcast_addr;
-        ////        }
-        ////        ip_addr = DEFAULT_IPV4_BCAST;
-    }
+    if (!ip) ip_addr = ipv6 ? DEFAULT_IPV6_MCAST : DEFAULT_IPV4_BCAST;
     else
     {
-        int ip_version = DetermineIPVersion(ip_addr_arg);
-        if (ip_version == -1)
-        {
-            throw std::invalid_argument("Error: AWakeOnLAN::SetIPAddr, invalid IP Address.");
-        }
-        ipv6_toggle_val = ip_version == 4 ? false : true;
-        ip_addr = ip_addr_arg;
+        const int version = DetermineIPVersion(ip);
+        if (version == -1) throw std::invalid_argument("Invalid IP address.");
+        ipv6 = version == 6;
+        ip_addr = ip;
     }
-    domain = ipv6_toggle_val ? AF_INET6 : AF_INET;
+    domain = ipv6 ? AF_INET6 : AF_INET;
 }
 
-void AWakeOnLAN::ConfigSocketSettings()
+void AWakeOnLAN::SetPort(const char *input)
 {
-    socket_fd = socket(domain, SOCK_DGRAM, IPPROTO_UDP);
-    if (socket_fd < 0)
-    {
-        std::error_code ec(errno, std::system_category());
-        throw std::system_error(ec, "Error: AWakeOnLAN::ConfigSocketSettings, could not create socket.\n");
-    }
-
-    if (domain == AF_INET)
-    {
-        int broadcast_enable = 1;
-        if (setsockopt(socket_fd, SOL_SOCKET, SO_BROADCAST, &broadcast_enable, sizeof(broadcast_enable)) < 0)
-        {
-            close(socket_fd);
-            std::error_code ec(errno, std::system_category());
-            throw std::system_error(ec, "Error: AWakeOnLAN::ConfigSocketSettings, could set SO_BROADCAST to socket.\n");
-        }
-        server_address.sin_family = domain;
-        server_address.sin_port = htons(port);
-        server_address.sin_addr.s_addr = inet_addr(ip_addr.c_str());
-    }
-    else
-    {
-        std::memset(&server_address_v6, 0, sizeof(struct sockaddr_in6));
-        server_address_v6.sin6_family = domain;
-        server_address_v6.sin6_port = htons(port);
-        inet_pton(domain, ip_addr.c_str(), &server_address_v6.sin6_addr);
-    }
+    port = input ? static_cast<int>(ParseDecimal(input, 1, 65535)) : DEFAULT_PORT;
 }
 
-void AWakeOnLAN::SetPort(char *port_arg)
+void AWakeOnLAN::SetMac(const char *input)
 {
-    if (port_arg == nullptr)
-    {
-        port = DEFAULT_PORT;
-    }
-    else
-    {
-        port = static_cast<int>(std::stol(port_arg));
-    }
-
-    if (port <= 0 || port > 65535)
-    {
-        throw std::invalid_argument("Error: AWakeOnLAN::SetPort, port must be greater than 0 and less than or "
-                                    "equal to 65535.");
-        ;
-    }
+    if (!ValidateMACAddr(input)) throw std::invalid_argument("Invalid MAC address.");
+    std::string compact;
+    for (const char *p = input; *p; ++p)
+        if (*p != ':' && *p != '-') compact.push_back(*p);
+    HexStringToBytesVec(compact, mac);
 }
 
-void AWakeOnLAN::SetMac(char *mac_arg)
+void AWakeOnLAN::SetPasswd(const char *input)
 {
-    if (!ValidateMACAddr(mac_arg))
-    {
-        throw std::invalid_argument(
-            "Error: AWakeOnLAN::SetMac, MAC Address must be 6 bytes long and formatted such that "
-            "1. no spaces between hex bytes, or 2. colons ':' between hex bytes, or "
-            "3. hyphens '-' between hex bytes.");
-    }
-    if (*(mac_arg + 2) == ':' || *(mac_arg + 2) == '-')
-    {
-        SanitizeMACAddr(mac_arg);
-    }
-    std::string mac_string = mac_arg;
-
-    HexStringToBytesVec(mac_string, mac);
-}
-
-void AWakeOnLAN::SetPasswd(char *passwd_arg)
-{
-    int passwd_len = static_cast<int>(std::strlen(passwd_arg));
-    passwd.assign(passwd_arg, passwd_arg + passwd_len);
+    // Preserve the existing raw UTF-8 password format; bound the UDP payload.
+    const size_t length = std::strlen(input);
+    if (length > 1024) throw std::invalid_argument("Password exceeds 1024 bytes.");
+    passwd.assign(input, input + length);
 }
 
 void AWakeOnLAN::CreateMagicPacket()
 {
-    magic_packet.assign(MAC_ADDR_BYTE_SZ, 255);
-    for (int i = 0; i < 16; i++)
+    magic_packet.assign(6, 255);
+    for (int i = 0; i < 16; ++i) magic_packet.insert(magic_packet.end(), mac.begin(), mac.end());
+    magic_packet.insert(magic_packet.end(), passwd.begin(), passwd.end());
+}
+
+void AWakeOnLAN::ConfigSocketSettings()
+{
+    socket_fd.reset(socket(domain, SOCK_DGRAM, IPPROTO_UDP));
+    if (socket_fd.get() < 0) throw std::system_error(errno, std::system_category(), "Could not create WOL socket.");
+    if (domain == AF_INET)
     {
-        magic_packet.insert(magic_packet.end(), mac.begin(), mac.end());
+        int enable = 1;
+        if (setsockopt(socket_fd.get(), SOL_SOCKET, SO_BROADCAST, &enable, sizeof(enable)) < 0)
+            throw std::system_error(errno, std::system_category(), "Could not enable broadcast.");
+        server_address.sin_family = AF_INET;
+        server_address.sin_port = htons(port);
+        inet_pton(AF_INET, ip_addr.c_str(), &server_address.sin_addr);
     }
-    if (passwd.size() > 0)
+    else
     {
-        magic_packet.insert(magic_packet.end(), passwd.begin(), passwd.end());
+        server_address_v6.sin6_family = AF_INET6;
+        server_address_v6.sin6_port = htons(port);
+        inet_pton(AF_INET6, ip_addr.c_str(), &server_address_v6.sin6_addr);
     }
 }
 
 void AWakeOnLAN::SendMagicPacket()
 {
-    int send_err_code = 0;
-    if (domain == AF_INET)
-    {
-        send_err_code = sendto(socket_fd, magic_packet.data(), magic_packet.size(), 0,
-                               (struct sockaddr *)&server_address, sizeof(server_address));
-    }
-    else
-    {
-        send_err_code = sendto(socket_fd, magic_packet.data(), magic_packet.size(), 0,
-                               (struct sockaddr *)&server_address_v6, sizeof(sockaddr_in6));
-    }
-
-    if (send_err_code < 0)
-    {
-        close(socket_fd);
-        std::error_code ec(errno, std::system_category());
-        throw std::system_error(ec, "Error: AWakeOnLAN::SendMagicPacket, failed to send message.\n");
-    }
+    const sockaddr *address = domain == AF_INET ? reinterpret_cast<sockaddr *>(&server_address)
+                                               : reinterpret_cast<sockaddr *>(&server_address_v6);
+    const socklen_t length = domain == AF_INET ? sizeof(server_address) : sizeof(server_address_v6);
+    const ssize_t sent = sendto(socket_fd.get(), magic_packet.data(), magic_packet.size(), 0, address, length);
+    if (sent < 0) throw std::system_error(errno, std::system_category(), "Could not send WOL packet.");
+    if (static_cast<size_t>(sent) != magic_packet.size()) throw std::runtime_error("Incomplete WOL packet.");
 }

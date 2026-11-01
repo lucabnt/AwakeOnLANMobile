@@ -1,5 +1,11 @@
 import React from 'react';
-import { Text, TouchableOpacity } from 'react-native';
+import {
+  Text,
+  TouchableOpacity,
+  StyleProp,
+  ViewStyle,
+  TextStyle,
+} from 'react-native';
 
 interface CustomButtonProps {
   arg?: string; // Optional arg

@@ -1,61 +1,32 @@
-#ifndef NET_SCAN_H
-#define NET_SCAN_H
+#pragma once
 
-#include <cstdint>
-#include <cstdio>
-#include <iostream>
-#include <stdexcept>
-#include <string>
-#include <vector>
+#include "utils.h"
+#include <atomic>
+#include <chrono>
+#include <memory>
 
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <string.h>
-#include <unistd.h>
+uint32_t IPAddrStrToUInt32(const char *input);
+void SplitCIDR(const std::string &input, size_t slash_pos, std::string &ip, int &prefix);
+void DetermineIPRange(int prefix, uint32_t &start, uint32_t &end);
 
-uint32_t IPAddrStrToUInt32(const char *ip_addr_str);
+enum class Mode { CONNECT = 0, PING = 1 };
 
-void SplitCIDR(std::string &cidr_string, size_t slash_pos, std::string &ip_addr_string, int &num_prefix_bits);
-
-// Used with NetScan::CIDRScan() -> 127.3.59.1/15 should be start: 127.0.0.0, end: 127.3.255.255. Here start_ip_uint
-// shall be passed as the ntohl() 127.0.0.0 uint form.
-void DetermineIPRange(int num_prefix_bits, uint32_t &start_ip_uint, uint32_t &end_ip_uint);
-
-int SpawnConnCheckSocket();
-
-enum class Mode
+struct ScanControl
 {
-    CONNECT = 0,
-    PING = 1
+    std::atomic<bool> cancelled{false};
+    std::chrono::steady_clock::time_point deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(30);
+    void Check() const;
 };
 
 class NetScan
 {
-  private:
-    struct sockaddr_in m_sockaddr;
-    int sock_fd;
-
   public:
-    explicit NetScan();
-
-    ~NetScan();
-
-    // For checking one off IP address strings.
-    std::vector<std::string> Check(std::string ip_addr, Mode mode);
-
-    std::string GetHostname();
-
-    bool PingCheck(uint32_t ip_addr_uint);
-
-    // Attempts to connect to port 443 (HTTPS). Will not send retransmission attempts if first TCP SYN packet is not
-    // successful.
-    bool ConnectCheck(uint32_t ip_addr_uint);
-
-    std::vector<std::vector<std::string>> Scan(uint32_t ip_addr_uint_start, uint32_t ip_addr_uint_end, Mode mode);
-
-    std::vector<std::vector<std::string>> CIDRScan(std::string cidr_string, size_t slash_pos, Mode mode);
-
-    std::vector<std::vector<std::string>> DetermineAndRunOperation(char *cidr_char_string, Mode mode);
+    explicit NetScan(std::shared_ptr<ScanControl> control = std::make_shared<ScanControl>())
+        : control_(std::move(control)) {}
+    bool PingCheck(uint32_t ip);
+    bool ConnectCheck(uint32_t ip);
+    std::vector<std::vector<std::string>> DetermineAndRunOperation(const std::string &input, Mode mode);
+  private:
+    std::shared_ptr<ScanControl> control_;
 };
-
-#endif

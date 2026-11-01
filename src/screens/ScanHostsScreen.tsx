@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   SafeAreaView,
   View,
@@ -6,128 +6,25 @@ import {
   TextInput,
   FlatList,
   ActivityIndicator,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
   Keyboard,
 } from 'react-native';
 import { CustomButton } from '../components/CustomButton';
 import { CustomRadioButton } from '../components/CustomRadioButton';
-import { fonts, getColors, Colors, dynamicBaseStyles } from '../styles/base';
-import { dynamicDeviceFlatListStyles } from '../styles/flatList';
+import { fonts, useColors, Colors, useBaseStyles } from '../styles/base';
+import { useDeviceFlatListStyles } from '../styles/flatList';
 import NativeModule from '../../specs/NativeModule';
 
 interface ScanResult {
   host: string;
-  items: [string, string][];
+  items: string[][];
 }
 
-interface RadioButtonStyle {
-  radioGroup: {
-    flexDirection: 'row';
-    justifyContent: 'space-around';
-    marginVertical: number;
-  };
-  radioContainer: {
-    flexDirection: 'row';
-    alignItems: 'center';
-  };
-  radioCircle: {
-    width: number;
-    height: number;
-    borderRadius: number;
-    borderWidth: number;
-    borderColor: string;
-    alignItems: 'center';
-    justifyContent: 'center';
-    marginRight: number;
-  };
-  radioSelected: {
-    backgroundColor: string;
-  };
-  radioInnerCircle: {
-    width: number;
-    height: number;
-    borderRadius: number;
-    backgroundColor: string;
-  };
-  radioText: {
-    fontSize: number;
-    color: string;
-  };
-}
+const useDynamicStyles = () => {
+  const colors: Colors = useColors();
+  const baseStyles = useBaseStyles();
+  const flatListStyles = useDeviceFlatListStyles();
 
-interface Styles {
-  baseContainer: ViewStyle;
-  input: TextStyle;
-  list: ViewStyle;
-  itemContainer: ViewStyle;
-  textContainer: ViewStyle;
-  text: TextStyle;
-  placeholderTextColor: string;
-  container: {
-    flex: number;
-    padding: number;
-    borderRadius: number;
-    backgroundColor: string;
-    width: string;
-  };
-  radioButtonStyle: RadioButtonStyle;
-  buttonContainer: {
-    paddingTop: number;
-    flexDirection: 'row';
-    justifyContent: 'space-evenly';
-  };
-  buttonText: {
-    fontSize: number;
-  };
-  scanButton: {
-    width: number;
-    backgroundColor: string;
-  };
-  clearResultsButtonActive: {
-    width: number;
-    backgroundColor: string;
-  };
-  clearResultsButtonDisabled: {
-    width: number;
-    backgroundColor: string;
-  };
-  inputError: {
-    borderColor: string;
-    borderWidth: number;
-  };
-  errorText: {
-    color: string;
-    fontSize: number;
-    fontWeight: string;
-    marginBottom: number;
-  };
-  spinner: {
-    marginTop: number;
-    color: string;
-  };
-  resultsHeader: {
-    fontSize: number;
-    color: string;
-    fontWeight: string;
-    marginTop: number;
-    marginBottom: number;
-  };
-  noResults: {
-    fontSize: number;
-    color: string;
-    textAlign: string;
-    marginTop: number;
-  };
-}
-
-const useDynamicStyles = (): Styles => {
-  const colors: Colors = getColors();
-  const baseStyles = dynamicBaseStyles();
-  const flatListStyles = dynamicDeviceFlatListStyles();
-
-  return StyleSheet.create({
+  return {
     baseContainer: baseStyles.container,
     input: baseStyles.input,
     list: flatListStyles.list,
@@ -227,7 +124,7 @@ const useDynamicStyles = (): Styles => {
       textAlign: 'center' as const,
       marginTop: 20,
     },
-  });
+  } as const;
 };
 
 export const ScanHostsScreen = () => {
@@ -237,29 +134,45 @@ export const ScanHostsScreen = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const scanning = useRef(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      if (scanning.current) NativeModule.CancelScan();
+    };
+  }, []);
 
   const styles = useDynamicStyles();
 
   const handleScanButtonPress = async (): Promise<void> => {
+    if (scanning.current) return;
     Keyboard.dismiss(); // Close the keyboard
     if (!inputValue.trim()) {
       setError('Enter a valid IP Address');
       return;
     }
 
+    scanning.current = true;
     setIsLoading(true);
     setError(null);
     try {
       const results: string[][] = await NativeModule.ScanHosts(
-        inputValue,
+        inputValue.trim(),
         selectedOption,
       );
-      setScanResult({ host: inputValue, items: results });
-      setInputValue('');
+      if (mounted.current) {
+        setScanResult({ host: inputValue, items: results });
+        setInputValue('');
+      }
     } catch (error) {
-      setError('Invalid IP Address');
+      if (mounted.current)
+        setError(error instanceof Error ? error.message : String(error));
     } finally {
-      setIsLoading(false);
+      scanning.current = false;
+      if (mounted.current) setIsLoading(false);
     }
   };
 
@@ -268,17 +181,17 @@ export const ScanHostsScreen = () => {
     setError(null);
   };
 
-  const renderItem = ({ item }: { item: [string, string] }) => (
+  const renderItem = ({ item }: { item: string[] }) => (
     <View style={styles.itemContainer}>
       <View style={styles.textContainer}>
         <Text style={styles.text}>IP: {item[0]}</Text>
-        <Text style={styles.text}>Hostname: {item[1]}</Text>
+        {!!item[1] && <Text style={styles.text}>Hostname: {item[1]}</Text>}
       </View>
     </View>
   );
 
   const isClearButtonActive: boolean =
-    scanResult?.items?.length > 0 && isLoading === false;
+    (scanResult?.items?.length ?? 0) > 0 && isLoading === false;
 
   return (
     <SafeAreaView style={styles.baseContainer}>
@@ -287,10 +200,15 @@ export const ScanHostsScreen = () => {
           style={[styles.input, error && styles.inputError]}
           value={inputValue}
           onChangeText={setInputValue}
-          placeholder="IPv4 Address (e.g. 192.168.1.1/24)"
-          placeholderTextColor={styles.input.placeholderTextColor}
+          editable={!isLoading}
+          maxLength={18}
+          placeholder="IPv4 or subnet (/24 to /32)"
+          placeholderTextColor={styles.placeholderTextColor}
         />
         {error && <Text style={styles.errorText}>{error}</Text>}
+        <Text style={styles.text}>
+          Maximum 256 addresses and 30 seconds per scan.
+        </Text>
         <CustomRadioButton
           options={radioOptions}
           selectedOption={selectedOption}
@@ -299,8 +217,12 @@ export const ScanHostsScreen = () => {
         />
         <View style={styles.buttonContainer}>
           <CustomButton
-            title="Scan"
-            onPress={handleScanButtonPress}
+            title={isLoading ? 'Cancel scan' : 'Scan'}
+            onPress={
+              isLoading
+                ? () => NativeModule.CancelScan()
+                : handleScanButtonPress
+            }
             buttonStyle={styles.scanButton}
             buttonTextStyle={styles.buttonText}
           />
