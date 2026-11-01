@@ -24,4 +24,4 @@ The local release-artifacts/ directory is ignored. Its checksums refer to unsign
 
 ## Contributor attribution
 
-GitHub's repository contributor list uses the default branch, currently master. The personal commits are authored by lucabnt with the GitHub noreply address; viewing personal does not change the contributor list's basis. If personal is the maintained branch, the owner can choose it in Settings → General → Default branch. This does not merge history or change upstream. Profile contribution squares have separate fork eligibility rules.
+GitHub's repository contributor list uses the default branch, now personal. The personal commits are authored by lucabnt with the GitHub noreply address. Contributor statistics may take time to refresh after changing the default branch. Profile contribution squares have separate fork eligibility rules.

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Text } from 'react-native';
+import { Alert, Text, Platform, ToastAndroid } from 'react-native';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { DeviceFlatList } from '../src/components/DeviceFlatList';
 import NativeModule from '../specs/NativeModule';
@@ -31,7 +31,9 @@ jest.mock('../src/styles/flatList', () => ({
   useDeviceFlatListStyles: () => ({}),
 }));
 
-test('never displays passwords and confirms only successful sends', async () => {
+test('never displays passwords and shows a toast only after successful sends', async () => {
+  const platform = jest.replaceProperty(Platform, 'OS', 'android');
+  const toast = jest.spyOn(ToastAndroid, 'show').mockImplementation(() => {});
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   let tree!: ReactTestRenderer.ReactTestRenderer;
   await act(() => {
@@ -53,12 +55,20 @@ test('never displays passwords and confirms only successful sends', async () => 
   act(() => wake.props.onPress());
   expect(alert).toHaveBeenCalledTimes(1);
   expect(alert.mock.calls[0][0]).toBe('Wake On LAN failed');
+  expect(toast).not.toHaveBeenCalled();
   alert.mockClear();
   act(() => wake.props.onPress());
-  expect(alert.mock.calls[0][0]).toContain('packet sent');
+  expect(alert).not.toHaveBeenCalled();
+  expect(toast).toHaveBeenCalledWith(
+    'Wake packet sent · startup not verified',
+    ToastAndroid.SHORT,
+  );
+  expect(JSON.stringify(toast.mock.calls)).not.toContain('secret-value');
   expect(JSON.stringify(alert.mock.calls)).not.toContain('secret-value');
   await act(() => tree.unmount());
   alert.mockRestore();
+  toast.mockRestore();
+  platform.restore();
 });
 
 test('shows uncertainty for unconfirmed status and sends only device IDs to native shortcuts', async () => {

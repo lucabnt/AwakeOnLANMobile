@@ -38,6 +38,12 @@ int main()
     control->deadline = std::chrono::steady_clock::now() - std::chrono::seconds(1);
     rejects([&] { NetScan(control).DetermineAndRunOperation("127.0.0.1", Mode::CONNECT); });
 
+    // Empty UI destinations are mapped to nullptr by the native bridge.
+    AWakeOnLAN defaults(nullptr, nullptr, "001122334455", nullptr, false);
+    assert(defaults.ip_addr == "255.255.255.255" && defaults.port == 9);
+    AWakeOnLAN explicitTarget("192.168.1.255", nullptr, "001122334455", nullptr, false);
+    assert(explicitTarget.ip_addr == "192.168.1.255");
+
     // Decode a real datagram sent over loopback and check the exact magic packet.
     SocketHandle receiver(socket(AF_INET, SOCK_DGRAM, 0));
     assert(receiver.get() >= 0);

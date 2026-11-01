@@ -66,6 +66,18 @@ class WakeWidgetTest {
         assertEquals(0, WidgetDevice.parseArchive(null).size)
     }
 
+    @Test fun missingDestinationSendsALocalBroadcast() {
+        // Bind all local interfaces: a loopback-only listener cannot receive limited broadcasts.
+        DatagramSocket(0).use { listener ->
+            listener.soTimeout = 3000
+            val device = WidgetDevice.parseArchive(json("", listener.localPort)).single()
+            device.wake()
+            val received = DatagramPacket(ByteArray(2048), 2048)
+            listener.receive(received)
+            assertArrayEquals(device.packet(), received.data.copyOf(received.length))
+        }
+    }
+
     @Test fun rejectsMalformedArchivesWithoutDnsOrCoercion() {
         fails(json().replace("127.0.0.1", "example.com"))
         fails(json().replace("127.0.0.1", "127.1"))

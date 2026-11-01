@@ -60,8 +60,8 @@ Wake-on-LAN is a UDP protocol, not an encrypted remote-access channel. An option
 
 1. Enable Wake-on-LAN in the PC's firmware and network adapter settings.
 2. Save the network adapter's MAC address in the app.
-3. Prefer an explicit destination IP or your LAN's directed broadcast address, for example `192.168.1.255` on a `192.168.1.0/24` network. The upstream fallback `192.255.255.255` is retained for compatibility and is not appropriate for every network. The default UDP port is `9`.
-4. Tap **Wake**. “Packet sent” confirms local UDP submission, not that the PC has booted. Use a scan or check the PC separately.
+3. Prefer an explicit destination IP or your LAN's directed broadcast address, for example `192.168.1.255` on a `192.168.1.0/24` network. An empty IPv4 destination uses the local limited broadcast `255.255.255.255` in both the app and native shortcuts. Explicit destinations are preserved. The default UDP port is `9`.
+4. Tap **Wake**. A brief toast confirms local UDP submission, not that the PC has booted; failures still show an alert. Use a scan or check the PC separately.
 
 Scan only networks you own or are authorized to test. For slower ping scans, use a smaller subnet if the 30-second deadline is reached. A host may be awake while refusing or filtering the probe, so absence from scan results does not prove it is powered off.
 

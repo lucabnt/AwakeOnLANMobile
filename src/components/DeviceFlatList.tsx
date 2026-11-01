@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  Alert,
+  Platform,
+  ToastAndroid,
+} from 'react-native';
 import { useDeviceContext } from '../contexts/DeviceContext';
 import { CustomButton } from './CustomButton';
 import { useDeviceFlatListStyles } from '../styles/flatList';
@@ -82,15 +89,6 @@ export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
     }
   };
 
-  const buildMessage = (item: DeviceType) => {
-    const fields = [];
-    if (item.name) fields.push(`Name: ${item.name}`);
-    if (item.macAddr) fields.push(`MAC: ${item.macAddr}`);
-    if (item.ipAddr) fields.push(`IP: ${item.ipAddr}`);
-    if (item.port) fields.push(`Port: ${item.port}`);
-    return fields.join('\n');
-  };
-
   const wakeButton = (item: DeviceType) => {
     try {
       NativeModule.SendWOL(
@@ -107,9 +105,12 @@ export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
       return;
     }
 
-    Alert.alert('Wake On LAN packet sent to:', buildMessage(item), [
-      { text: 'OK' },
-    ]);
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(
+        'Wake packet sent · startup not verified',
+        ToastAndroid.SHORT,
+      );
+    }
   };
 
   const deleteButton = (item: DeviceType) => {

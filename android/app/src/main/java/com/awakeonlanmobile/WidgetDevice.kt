@@ -65,7 +65,7 @@ internal class WidgetDevice(
                 require(macPattern.matches(macText))
                 val compact = macText.replace(":", "").replace("-", "")
                 val mac = ByteArray(6) { compact.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
-                val ip = field(item, "ipAddr").ifEmpty { "192.255.255.255" }
+                val ip = field(item, "ipAddr").ifEmpty { "255.255.255.255" }
                 // Numeric literals only: no DNS resolution, hostnames, or scoped addresses.
                 val address = Os.inet_pton(if (ip.contains(':')) OsConstants.AF_INET6 else OsConstants.AF_INET, ip)
                 requireNotNull(address)

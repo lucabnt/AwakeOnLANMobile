@@ -1,7 +1,7 @@
 #include "a_wake_on_lan.h"
 
-// Keep the existing fallback for compatibility. Prefer an explicit LAN broadcast address.
-#define DEFAULT_IPV4_BCAST "192.255.255.255"
+// Limited broadcast stays on the local network. An explicit destination takes precedence.
+#define DEFAULT_IPV4_BCAST "255.255.255.255"
 #define DEFAULT_IPV6_MCAST "ff02::1"
 
 AWakeOnLAN::AWakeOnLAN(const char *ip, const char *port_arg, const char *mac_arg,
