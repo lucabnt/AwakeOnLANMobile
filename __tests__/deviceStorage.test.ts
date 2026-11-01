@@ -10,7 +10,8 @@ jest.mock('../specs/NativeModule', () => ({
   default: {
     ValidMac: (value: string) =>
       /^(?:[a-f\d]{12}|(?:[a-f\d]{2}:){5}[a-f\d]{2})$/i.test(value),
-    ValidIp: (value: string) => value === '192.168.1.255',
+    ValidIp: (value: string) =>
+      ['192.168.1.255', '192.168.1.42'].includes(value),
   },
 }));
 
@@ -76,4 +77,19 @@ test('surfaces save errors and never uses plaintext storage on an unsupported pl
   backend.save.mockClear();
   await expect(saveDevices([device])).rejects.toThrow('Android only');
   expect(backend.save).not.toHaveBeenCalled();
+});
+
+test('preserves status probe settings and rejects malformed probe addresses or ports', () => {
+  const configured = {
+    ...device,
+    statusIp: '192.168.1.42',
+    statusPort: '3389',
+  };
+  expect(validateDevices([configured])[0]).toMatchObject(configured);
+  expect(() =>
+    validateDevices([{ ...configured, statusIp: 'pc.local' }]),
+  ).toThrow();
+  for (const statusPort of ['0', '65536', '443x', '-1']) {
+    expect(() => validateDevices([{ ...configured, statusPort }])).toThrow();
+  }
 });

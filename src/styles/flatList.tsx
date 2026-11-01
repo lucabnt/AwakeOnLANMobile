@@ -18,6 +18,7 @@ export const useDeviceFlatListStyles = () => {
       marginVertical: 10,
     },
     textContainer: {
+      flex: 1,
       flexGrow: 1,
       flexDirection: 'column',
       justifyContent: 'flex-start',
@@ -31,6 +32,7 @@ export const useDeviceFlatListStyles = () => {
       textAlign: 'left',
     },
     buttonContainer: {
+      gap: 8,
       flexDirection: 'column',
       justifyContent: 'space-between', // Center buttons vertically
       alignItems: 'center',

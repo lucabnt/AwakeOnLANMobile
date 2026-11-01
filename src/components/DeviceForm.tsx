@@ -96,6 +96,8 @@ export const DeviceForm = ({
   const [ipAddrError, setIpAddrError] = useState<string | null>(null);
   const [port, setPort] = useState<string>(initialDevice?.port || '');
   const [passwd, setPasswd] = useState<string>(initialDevice?.passwd || '');
+  const [statusIp, setStatusIp] = useState(initialDevice?.statusIp || '');
+  const [statusPort, setStatusPort] = useState(initialDevice?.statusPort || '');
   const [isSaving, setIsSaving] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -156,6 +158,19 @@ export const DeviceForm = ({
     if (!validMac || (ipAddr && !validIp)) {
       return;
     }
+    if (
+      (statusIp.trim() && !NativeModule.ValidIp(statusIp.trim())) ||
+      (statusPort &&
+        (!/^\d{1,5}$/.test(statusPort) ||
+          Number(statusPort) < 1 ||
+          Number(statusPort) > 65535))
+    ) {
+      Alert.alert(
+        'Invalid status settings',
+        'Enter a numeric PC IP address and a TCP port between 1 and 65535.',
+      );
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -166,6 +181,8 @@ export const DeviceForm = ({
         ipAddr: ipAddr.trim() || '',
         port: port.trim() || '',
         passwd,
+        statusIp: statusIp.trim(),
+        statusPort,
       });
 
       setName('');
@@ -175,6 +192,8 @@ export const DeviceForm = ({
       setIpAddrError(null);
       setPort('');
       setPasswd('');
+      setStatusIp('');
+      setStatusPort('');
     } catch {
       Alert.alert(
         'Save failed',
@@ -278,6 +297,31 @@ export const DeviceForm = ({
             maxLength={256}
             onChangeText={setPasswd}
             placeholder="Enter Password"
+          />
+          <Text style={styles.label}>
+            Status IP (Optional, actual PC address)
+          </Text>
+          <TextInput
+            style={styles.input}
+            placeholderTextColor={colors.placeholderText}
+            value={statusIp}
+            onChangeText={setStatusIp}
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={45}
+            placeholder="Use when WOL targets a broadcast address"
+          />
+          <Text style={styles.label}>
+            Status TCP port (Optional, default 443)
+          </Text>
+          <TextInput
+            style={styles.input}
+            placeholderTextColor={colors.placeholderText}
+            value={statusPort}
+            onChangeText={setStatusPort}
+            inputMode="numeric"
+            maxLength={5}
+            placeholder="An available service on your PC"
           />
           <View style={styles.buttonContainer}>
             <CustomButton

@@ -1,3 +1,35 @@
 <resources>
     <string name="app_name">AwakeOnLANMobile</string>
+    <string name="widget_title">Wake-on-LAN</string>
+    <string name="widget_description">Wake a saved PC from your home screen.</string>
+    <string name="widget_device">Saved device</string>
+    <string name="widget_unnamed">Device %1$d</string>
+    <string name="widget_wake">Wake PC</string>
+    <string name="widget_configure">Choose device</string>
+    <string name="widget_choose">Choose a PC for this widget</string>
+    <string name="widget_ready">Tap to send a wake packet</string>
+    <string name="widget_sent">Packet sent · boot not verified</string>
+    <string name="widget_missing">Choose a saved device</string>
+    <string name="widget_error">Unavailable · retry or open app</string>
+    <string name="widget_unlock">Unlock your phone and retry</string>
+    <string name="widget_loading">Loading saved devices…</string>
+    <string name="widget_empty">Save a device in the app first, then add the widget.</string>
+    <string name="widget_retry">Retry</string>
+    <string name="widget_open_app">Open app</string>
+    <string name="tile_hint">Tap to send · not a power indicator</string>
+    <string name="tile_missing">Choose a PC from More in the app</string>
+    <string name="backup_title">Encrypted backup</string>
+    <string name="backup_explanation">Export your devices with a separate backup password, or import them on this phone. Imports add devices with new IDs and preserve existing devices. Keep the password: it cannot be recovered.</string>
+    <string name="backup_password_hint">Use a strong, unique password of 12–256 characters. Spaces are significant.</string>
+    <string name="backup_password">Backup password</string>
+    <string name="backup_confirm">Confirm backup password</string>
+    <string name="backup_password_error">Use 12–256 characters and matching passwords.</string>
+    <string name="backup_export">Export encrypted backup</string>
+    <string name="backup_import">Import encrypted backup</string>
+    <string name="backup_decrypt">Decrypt backup</string>
+    <string name="backup_add">Add devices</string>
+    <string name="backup_working">Working securely. Please wait…</string>
+    <string name="backup_failure">Could not complete backup. Check the password, file, available storage, and permissions. Your saved devices were preserved. An interrupted export may leave an incomplete file; retry with a new file.</string>
+    <string name="backup_exported">Encrypted backup exported. Store the file and password safely.</string>
+    <string name="backup_import_count">Add %1$d devices from this backup? Existing devices and widget links will be preserved. Repeated imports create additional copies.</string>
 </resources>

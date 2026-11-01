@@ -7,10 +7,12 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { CustomButton } from '../components/CustomButton';
 import { useTheme } from '../contexts/ThemeContext';
 import { fonts, useColors, Colors } from '../styles/base';
+import { useDeviceContext } from '../contexts/DeviceContext';
 
 const useModalStyles = () => {
   const colors: Colors = useColors();
@@ -60,6 +62,7 @@ interface MenuModalProps {
 
 export const MenuModal = ({ visible, onClose }: MenuModalProps) => {
   const { isDarkMode, toggleTheme } = useTheme();
+  const { manageBackup, isLoading, storageError } = useDeviceContext();
   const styles = useModalStyles();
   const { version } = packageJson;
 
@@ -82,6 +85,26 @@ export const MenuModal = ({ visible, onClose }: MenuModalProps) => {
             onPress={toggleThemeButton}
             buttonStyle={styles.modalItem}
             buttonTextStyle={styles.modalItemText}
+          />
+
+          <CustomButton
+            title="Encrypted backup"
+            disabled={isLoading || !!storageError}
+            buttonStyle={styles.modalItem}
+            buttonTextStyle={styles.modalItemText}
+            onPress={async () => {
+              onClose();
+              try {
+                await manageBackup();
+              } catch (error) {
+                Alert.alert(
+                  'Backup unavailable',
+                  (error as { code?: string })?.code === 'BACKUP_UNSUPPORTED'
+                    ? 'Encrypted backups require Android 8 or newer.'
+                    : 'Could not open encrypted backup. Your saved devices were preserved.',
+                );
+              }
+            }}
           />
 
           <TouchableOpacity style={styles.modalItem} onPress={onClose}>

@@ -4,17 +4,9 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
-import java.io.File
-import java.util.concurrent.Executors
 
 class DeviceStorageModule(context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
-    companion object {
-        // One queue across React reloads: AtomicFile does not synchronize independent writers.
-        private val executor = Executors.newSingleThreadExecutor { work ->
-            Thread(work, "ProtectedDeviceStorage").apply { isDaemon = true }
-        }
-    }
-    private val store = ProtectedDeviceStore(context.noBackupFilesDir, File(context.filesDir, "devices.json"))
+    private val store = DeviceStorageAccess.store(context)
 
     override fun getName() = "DeviceStorage"
 
@@ -22,11 +14,20 @@ class DeviceStorageModule(context: ReactApplicationContext) : ReactContextBaseJa
     fun load(promise: Promise) = submit(promise) { store.load() }
 
     @ReactMethod
-    fun save(json: String, promise: Promise) = submit(promise) { store.save(json); null }
+    fun save(json: String, promise: Promise) = submit(promise) {
+        store.save(json)
+        // Refresh labels and remove stale actions after a rename or deletion.
+        try { WakeWidgetProvider.refreshAll(reactApplicationContext) } catch (_: Exception) {
+            // A launcher failure must not turn a committed archive save into an error.
+        }
+        runCatching { android.service.quicksettings.TileService.requestListeningState(reactApplicationContext,
+            android.content.ComponentName(reactApplicationContext, WakeTileService::class.java)) }
+        null
+    }
 
     private fun submit(promise: Promise, work: () -> String?) {
         try {
-            executor.execute {
+            DeviceStorageAccess.executor.execute {
                 try {
                     promise.resolve(work())
                 } catch (_: Exception) {

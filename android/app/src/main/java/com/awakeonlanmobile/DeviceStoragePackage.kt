@@ -7,7 +7,7 @@ import com.facebook.react.uimanager.ViewManager
 
 class DeviceStoragePackage : ReactPackage {
     override fun createNativeModules(context: ReactApplicationContext): List<NativeModule> =
-        listOf(DeviceStorageModule(context))
+        listOf(DeviceStorageModule(context), DeviceActionsModule(context))
 
     override fun createViewManagers(context: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()
 }

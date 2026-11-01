@@ -9,6 +9,9 @@ Maintained by [lucabnt](https://github.com/lucabnt/AwakeOnLANMobile) on the `per
 - Send Wake-on-LAN magic packets to IPv4 or IPv6 destinations, with configurable UDP port and optional WOL password.
 - Add, edit, and delete saved devices. Android device records, including passwords, are encrypted at rest.
 - Open directly to saved devices. Tabs are ordered **Device List**, **Add Device**, and **Scan Hosts**; adding a device remains available from the second tab, including when no devices have been saved yet.
+- Android home-screen widget: choose one saved PC per widget and send its wake packet without opening the app.
+- Request a widget directly from a saved device, check its TCP reachability on demand, and select a PC for the Android Quick Settings tile.
+- Export and import password-encrypted device backups on Android 8 or newer, without copying a phone's Keystore key.
 - Scan a single IPv4 address or subnet from `/24` to `/32`, using ICMP ping or a TCP connection to port 443.
 - Cancel an active scan. Each scan is limited to 256 addresses and 30 seconds; only one native scan runs at a time.
 - Light and dark themes. No advertisements, accounts, or cloud storage.
@@ -62,6 +65,43 @@ Wake-on-LAN is a UDP protocol, not an encrypted remote-access channel. An option
 
 Scan only networks you own or are authorized to test. For slower ping scans, use a smaller subnet if the 30-second deadline is reached. A host may be awake while refusing or filtering the probe, so absence from scan results does not prove it is powered off.
 
+## Android home-screen widget
+
+1. Save your PC in the app, preferably with an explicit destination address appropriate for your network.
+2. Touch and hold an empty area on the Android home screen, open **Widgets**, and add **Wake-on-LAN** from **AwakeOnLANMobile**.
+3. Select a saved device. You can add multiple widgets, each linked to a different PC. Give devices distinct names to distinguish them in the picker.
+4. Tap **Wake PC** to send the magic packet. **Packet sent** confirms UDP submission, not successful PC startup.
+
+Use **Choose device** on the widget to change its target, including on Android versions whose launcher does not offer a reconfigure menu. With no saved devices, the configuration screen offers **Open app**; save a device there and then add the widget again. Cancelling configuration does not add a new widget.
+
+The widget runs native Android code without starting the React interface or requiring Metro. It shares the app's serialized encrypted-archive access and reads current settings on every tap. Renaming, editing, or deleting a device in the app refreshes the widget. A deleted device is never woken from cached settings; storage errors show an unavailable message and never fall back to plaintext after decryption failure. Unlock the phone before using or configuring the widget.
+
+Only the device ID is stored in widget preferences; MAC, IP, port, and password are not copied into preferences or pending intents. The selected device name and send status are visible to the home-screen launcher, so avoid sensitive names. Actions use explicit, immutable pending intents and a non-exported receiver. There is no periodic background polling, foreground service, or additional permission. The native widget sender preserves the app's magic-packet format and defaults, including its raw UTF-8 WOL password format and 1,024-byte limit.
+
+You can also use **Device List → More → Add widget**. On Android 8+ and supported launchers this opens the system placement confirmation and automatically links the selected device after acceptance. Dismissing that confirmation is not reported as successful placement. Other launchers and older Android versions show instructions for adding it manually. The system's pin-success callback is the only mutable pending intent: it is explicit, one-shot, handled by a non-exported receiver, and validated against a private nonce that expires after ten minutes. It contains no device credentials and cannot reassign an already configured widget.
+
+## Reachability on request
+
+Tap **Status** on a saved device to perform a single TCP probe with a 1.5-second connection timeout. No scheduled polling is performed. Only one status check runs at a time, on a separate worker from device storage. A successful connection or a connection-refused response confirms reachability; a timeout or other failure is shown as **Not verified**, never as proof that the PC is powered off.
+
+If Wake-on-LAN uses a broadcast destination, edit the device and set **Status IP** to the actual numeric IPv4/IPv6 address of the PC. You can also set **Status TCP port** to a service port; the default is `443`. If Status IP is empty the WOL destination is used. Multicast, unspecified addresses, and IPv4 addresses ending in `.255` are rejected for status checks; a `.255` unicast address in an unusual subnet is therefore not supported by this check. Reachability does not verify that the operating system or desktop is ready. These optional settings are encrypted with the rest of the device record and included in backups.
+
+## Android Quick Settings
+
+Use **Device List → More → Use for Quick Settings** to select the tile's PC. Android 13+ offers the system dialog to add **Wake PC**; on Android 7–12, edit the Quick Settings panel and add the tile manually. Cancelling the add dialog still retains the selected target so you can add the tile later. There is one tile, with one selected PC, independent of widget targets.
+
+Tap the tile to send a wake packet without opening the React interface. A locked phone must be unlocked first. The tile reads current settings from protected storage on each tap, stores only the device ID, and never treats its visual state as a PC power indicator. Missing or deleted targets do not send a packet; select another PC in the app. The service is exported only behind Android's `BIND_QUICK_SETTINGS_TILE` permission, so ordinary apps cannot bind to it.
+
+## Portable encrypted backups
+
+Open the app menu and choose **Encrypted backup**. This feature requires Android 8+ for the platform PBKDF2-HMAC-SHA-256 implementation; the core app, manual widget setup, and Quick Settings tile still support Android 7. Export and import use the Android document picker without storage permissions. Only `content://` document URIs are accepted; direct file paths and web URLs are rejected. Choose a strong, unique backup password of **12–256 characters** and confirm it when exporting. Spaces and non-ASCII characters are preserved. The password cannot be recovered from your phone's Keystore.
+
+The versioned binary `.awol` format uses PBKDF2-HMAC-SHA-256 with 600,000 iterations, a fresh 32-byte salt, AES-256-GCM, a fresh 12-byte IV, and an authenticated header. It contains all known device fields, including WOL passwords and optional status settings, inside the ciphertext. Passwords and decrypted data are not written to temporary files, preferences, pending intents, or Activity saved state. The backup screen disables screenshots and autofill. Key derivation and document I/O run off the UI and archive queues; file sizes and record counts are bounded.
+
+Import verifies the password/authentication tag and validates the full device schema before showing a count for confirmation. **Add devices** then merges the records in a serialized atomic archive write. Existing records and widget/tile bindings are preserved; imported records receive fresh IDs. Re-importing the same backup creates additional copies. The total remains limited to 1,000 devices and a 1 MiB plaintext archive; imports exceeding these limits are rejected. A malformed backup, incorrect password, or damaged file never replaces the archive with an empty list. The React interface reloads the archive before allowing subsequent edits, including after cancellation.
+
+Backups can be restored on another phone or installation using the backup password: they do not depend on the original signing certificate or Keystore key. Keep the backup and its password securely. An interrupted export can leave an incomplete ciphertext file in the chosen document provider; retry with a new file. No background sync or automatic backup upload is performed.
+
 ## Build and install this fork
 
 Prerequisites: Node.js 22.13 or newer, npm 11.17.x, a supported JDK (17 recommended), Android SDK 35, CMake, and NDK `27.1.12297006` as configured in `android/build.gradle`. The tested package manager is npm 11.17.0. Keep the repository's `.npmrc` when installing so local compatibility packages are packed rather than linked.
@@ -108,18 +148,18 @@ c++ -std=c++20 -Wall -Wextra -Werror -fsanitize=address,undefined -pthread \
 /tmp/awakeonlan-security-tests
 ```
 
-It checks malformed input, numeric overflow, scan cancellation/deadlines, the actual UDP magic packet, and descriptor lifetime. Android instrumentation tests exercise real Keystore encryption, random IVs, migration, tamper detection, lost keys, and interrupted-write recovery:
+It checks malformed input, numeric overflow, scan cancellation/deadlines, the actual UDP magic packet, and descriptor lifetime. Android instrumentation tests exercise real Keystore encryption, random IVs, migration, tamper detection, lost keys, and interrupted-write recovery. Widget tests verify IPv4/IPv6 UDP packets, malformed settings, independent widget bindings, configuration without sending, current encrypted settings after edits, and refusal to send after deletion. Feature tests verify authenticated portable backups across independent Keystore keys, password/tamper failures, import limits, status probes, one-time pin callbacks, and the real SystemUI Quick Settings tile sending a loopback packet:
 
 ```sh
 cd android
 ./gradlew connectedDebugAndroidTest
 ```
 
-Use a disposable emulator or test device. Also manually verify migration from an existing installation, failed saves, network errors, and scans cancelled while running.
+Use a disposable emulator or test device: feature tests temporarily alter the archive and Quick Settings panel, then restore the previous records and target. Also manually verify migration from an existing installation, failed saves, network errors, scans cancelled while running, launcher pin acceptance/cancellation, document-provider export/import, and real PC wake from the widget and tile.
 
 ## Scope and credits
 
-The app opens on **Device List**, including on first launch when the list is empty. Home-screen widgets are planned separately and are not included yet.
+The app opens on **Device List**, including on first launch when the list is empty. The home-screen widget is implemented for Android; iOS widgets are not included.
 
 The networking implementation derives from [AwakeOnLAN](https://github.com/nellogan/awakeonlan) and [NetScan](https://github.com/nellogan/netscan), by the upstream author. The original application is [AwakeOnLANMobile](https://github.com/nellogan/AwakeOnLANMobile).
 

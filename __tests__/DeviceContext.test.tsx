@@ -7,6 +7,11 @@ import {
 } from '../src/contexts/DeviceContext';
 import { loadDevices, saveDevices } from '../src/storage/deviceStorage';
 import { DeviceContextType } from '../src/types/device';
+import { deviceActions } from '../src/services/deviceActions';
+
+jest.mock('../src/services/deviceActions', () => ({
+  deviceActions: jest.fn(),
+}));
 
 jest.mock('../src/storage/deviceStorage', () => ({
   loadDevices: jest.fn(),
@@ -79,4 +84,54 @@ test('serializes concurrent updates without losing an addition', async () => {
   });
   expect(state.devices.map(item => item.id)).toEqual(['pc', 'second', 'third']);
   expect(save.mock.calls.map(([devices]) => devices.length)).toEqual([2, 3]);
+});
+
+test('blocks edits during native backup and reloads imported records before allowing another save', async () => {
+  let finishBackup!: (imported: boolean) => void;
+  const openBackup = jest.fn(
+    () =>
+      new Promise<boolean>(resolve => {
+        finishBackup = resolve;
+      }),
+  );
+  (deviceActions as jest.Mock).mockReturnValue({ openBackup });
+  await mount();
+  let backup!: Promise<void>;
+  await act(async () => {
+    backup = state.manageBackup();
+  });
+  expect(openBackup).toHaveBeenCalledTimes(1);
+  expect(state.isLoading).toBe(true);
+  await expect(state.addDevice({ ...pc, id: 'blocked' })).rejects.toThrow();
+  const imported = { ...pc, id: 'imported' };
+  load.mockResolvedValue([pc, imported]);
+  await act(async () => {
+    finishBackup(true);
+    await backup;
+  });
+  expect(state.devices).toEqual([pc, imported]);
+  await act(async () => {
+    await state.addDevice({ ...pc, id: 'new' });
+  });
+  expect(save.mock.calls[0][0].map((item: { id: string }) => item.id)).toEqual([
+    'pc',
+    'imported',
+    'new',
+  ]);
+});
+
+test('reloads storage and remains usable when backup is cancelled or fails', async () => {
+  (deviceActions as jest.Mock).mockReturnValue({
+    openBackup: jest.fn().mockRejectedValue(new Error('Activity unavailable')),
+  });
+  await mount();
+  await act(async () => {
+    await expect(state.manageBackup()).rejects.toThrow();
+  });
+  expect(state.isLoading).toBe(false);
+  expect(state.devices).toEqual([pc]);
+  await act(async () => {
+    await state.addDevice({ ...pc, id: 'after' });
+  });
+  expect(state.devices).toHaveLength(2);
 });

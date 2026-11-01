@@ -1,3 +1,4 @@
 {
-  "extends": "@react-native/typescript-config"
+  "extends": "@react-native/typescript-config",
+  "exclude": ["node_modules", "android", "ios", "**/Pods/**"]
 }

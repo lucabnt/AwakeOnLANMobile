@@ -36,7 +36,14 @@ export const validateDevices = (value: unknown): DeviceType[] => {
       throw new Error('Invalid device archive.');
     }
     ids.add(item.id);
-    const fields = ['name', 'ipAddr', 'port', 'passwd'] as const;
+    const fields = [
+      'name',
+      'ipAddr',
+      'port',
+      'passwd',
+      'statusIp',
+      'statusPort',
+    ] as const;
     for (const field of fields) {
       if (
         item[field] !== undefined &&
@@ -49,6 +56,11 @@ export const validateDevices = (value: unknown): DeviceType[] => {
     }
     if (
       (item.ipAddr && !NativeModule.ValidIp(item.ipAddr)) ||
+      (item.statusIp && !NativeModule.ValidIp(item.statusIp)) ||
+      (item.statusPort &&
+        (!/^\d{1,5}$/.test(item.statusPort) ||
+          Number(item.statusPort) < 1 ||
+          Number(item.statusPort) > 65535)) ||
       (item.port &&
         (!/^\d{1,5}$/.test(item.port) ||
           Number(item.port) < 1 ||
@@ -64,6 +76,8 @@ export const validateDevices = (value: unknown): DeviceType[] => {
       ipAddr: item.ipAddr || '',
       port: item.port || '',
       passwd: item.passwd || '',
+      statusIp: item.statusIp || '',
+      statusPort: item.statusPort || '',
     };
   });
 };

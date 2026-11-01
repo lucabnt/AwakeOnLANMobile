@@ -9,6 +9,7 @@ import React, {
 import { Alert } from 'react-native';
 import { DeviceType, DeviceContextType } from '../types/device';
 import { loadDevices, saveDevices } from '../storage/deviceStorage';
+import { deviceActions } from '../services/deviceActions';
 
 const DeviceContext = createContext<DeviceContextType | undefined>(undefined);
 
@@ -92,6 +93,23 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({
   const deleteDevice = (id: string) =>
     persist(previous => previous.filter(item => item.id !== id));
 
+  const manageBackup = (): Promise<void> => {
+    if (!ready.current)
+      return Promise.reject(new Error('Device storage is not ready.'));
+    const operation = writes.current.then(async () => {
+      ready.current = false;
+      if (mounted.current) setIsLoading(true);
+      try {
+        await deviceActions().openBackup();
+      } finally {
+        // Native import and JS writes share this barrier. Reload even after cancellation.
+        await retryLoad();
+      }
+    });
+    writes.current = operation.catch(() => {});
+    return operation;
+  };
+
   return (
     <DeviceContext.Provider
       value={{
@@ -99,6 +117,7 @@ export const DeviceProvider: React.FC<{ children: React.ReactNode }> = ({
         isLoading,
         storageError,
         retryLoad,
+        manageBackup,
         addDevice,
         updateDevice,
         deleteDevice,
