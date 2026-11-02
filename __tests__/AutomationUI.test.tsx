@@ -94,6 +94,8 @@ test('guides a schedule through three steps, validates time and only saves after
     .find(item => item.props.title === 'Enable this automation')!;
   expect(toggle.props.value).toBe(false);
   act(() => toggle.props.onChange(true));
+  expect(text(tree)).toContain('also turns on Automatic wakes');
+  expect(text(tree)).toContain('Other enabled rules will resume too');
   await act(async () => {
     await button(tree, 'Save automation').props.onPress();
   });
@@ -106,6 +108,27 @@ test('guides a schedule through three steps, validates time and only saves after
       minute: 15,
       days: [1, 2, 3, 4, 5],
     }),
+  );
+  await act(async () => tree.unmount());
+});
+
+test('editing an already-enabled rule explains that global pause is preserved', async () => {
+  let tree!: ReactTestRenderer.ReactTestRenderer;
+  await act(async () => {
+    tree = ReactTestRenderer.create(
+      <AutomationEditor
+        rule={{ ...newRule('pc'), enabled: true }}
+        exactAllowed
+        globallyEnabled={false}
+        onSave={jest.fn()}
+        onCancel={() => {}}
+      />,
+    );
+  });
+  act(() => button(tree, 'Continue').props.onPress());
+  act(() => button(tree, 'Continue').props.onPress());
+  expect(text(tree)).toContain(
+    'Editing this already-enabled rule keeps the pause',
   );
   await act(async () => tree.unmount());
 });

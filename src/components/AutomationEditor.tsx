@@ -442,8 +442,11 @@ export function AutomationEditor({
             {!globallyEnabled && (
               <View style={styles.notice}>
                 <Text style={styles.text}>
-                  Automatic wakes are currently paused. After saving, turn on
-                  Automatic wakes in the list to let enabled rules run.
+                  {draft.enabled && !rule.enabled
+                    ? 'Saving this enabled automation also turns on Automatic wakes. Other enabled rules will resume too.'
+                    : draft.enabled
+                    ? 'Automatic wakes are paused. Editing this already-enabled rule keeps the pause; use the main switch to resume all enabled rules.'
+                    : 'Automatic wakes are currently paused. Enable this automation and save to turn them on too.'}
                 </Text>
               </View>
             )}

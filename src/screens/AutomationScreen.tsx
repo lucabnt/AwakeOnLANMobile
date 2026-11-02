@@ -165,8 +165,8 @@ export const AutomationScreen = () => {
               MacroDroid.
             </Text>
             <Text style={styles.text}>
-              3. Enable the rule and turn on Automatic wakes below. Both
-              switches must be on.
+              3. Enable the rule and save. Automatic wakes turns on too. Both
+              switches must be on for a rule to run.
             </Text>
             <Text style={styles.muted}>
               The phone must be on a trusted LAN or VPN. Wakes can run while
@@ -215,8 +215,8 @@ export const AutomationScreen = () => {
                 }}
               />
               <Text style={styles.muted}>
-                Use this switch to pause or resume all rules. Each rule also has
-                its own switch.
+                Use this switch to pause or resume all rules. Enabling a rule
+                also resumes Automatic wakes and the other enabled rules.
               </Text>
             </View>
             {!!exactBlocked && (

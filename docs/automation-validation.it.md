@@ -23,7 +23,7 @@ Ambiente: Windows, Node 24.19.0 e npm del workspace, JDK Temurin 21.0.12.1 (il J
 
 | Controllo | Risultato registrato |
 |---|---|
-| Jest | 26 test superati: regressioni archivio/context/lista, concorrenza/cancellazione e quattro prove della UI guidata |
+| Jest | 27 test superati: regressioni archivio/context/lista, concorrenza/cancellazione e cinque prove della UI guidata |
 | TypeScript | `npx tsc --noEmit` superato dopo correzione del tipo del callback AppState nei test |
 | ESLint | Nessun errore; 3 avvisi di stile inline non bloccanti dopo la revisione UI |
 | Dipendenze | 8 test di regressione superati; `npm audit --audit-level=low`: 0 vulnerabilità al momento della verifica |
@@ -65,6 +65,14 @@ La build release è stata rigenerata per questa revisione e i quattro APK hanno 
 | Firma del manutentore, allineamento, impronta certificato, verifica payload e checksum dopo firma | Aperto; gli APK locali sono unsigned |
 
 ## Criterio di promozione
+
+### Attivazione del controllo generale
+
+La creazione di una regola abilitata e il passaggio di una regola da disabilitata ad abilitata attivano ora anche il controllo generale, nello stesso salvataggio cifrato. Le altre regole abilitate riprendono sulle occorrenze future. Modificare una regola già abilitata, salvarne una disabilitata o rifiutare un salvataggio non valido conserva invece la pausa generale.
+
+Verifica di questa modifica: 27 test Jest, TypeScript, ESLint (0 errori, 3 avvisi di stile) e build release superati. È stato inoltre eseguito e superato un test Android mirato sul Pixel 9 / API 35, che invoca il vero AutomationModule e controlla creazione, modifica senza riattivazione, disattivazione, input non valido, riattivazione e cronologia senza invii. Non si tratta di una nuova esecuzione dell'intera suite nativa. L'emulatore read-only è stato riavviato con l'opzione di laboratorio `-skip-adb-auth` dopo un problema di autorizzazione ADB.
+
+Gli APK unsigned sono stati aggiornati. Gli APK firmati generati prima di questa modifica non la contengono: rigenerare e firmare la build con lo stesso certificato del manutentore prima del collaudo sul telefono.
 
 Chiudere e registrare gli esiti della matrice prima di dichiarare completato il primo rilascio del piano o pubblicare una versione stabile. In particolare la prima integrazione deve essere provata dentro MacroDroid e lo scheduler deve essere misurato in background. La candidata rende codice, contratto, test e documentazione revisionabili senza sostituire questi collaudi con promesse.
 

@@ -76,6 +76,45 @@ class AutomationTest {
         fails { AutomationRule.validate(rule().put("windowEnd", 10)) }
     }
 
+    @Test fun enablingRuleAtomicallyResumesGlobalSwitchButEditingAndDisablingKeepPause() = isolated {
+        val module = AutomationModule(com.facebook.react.bridge.BridgeReactContext(context))
+        fun save(value: JSONObject): Boolean {
+            val latch = CountDownLatch(1)
+            var success = false
+            val promise = java.lang.reflect.Proxy.newProxyInstance(com.facebook.react.bridge.Promise::class.java.classLoader,
+                arrayOf(com.facebook.react.bridge.Promise::class.java)) { _, method, _ ->
+                    if (method.name == "resolve") { success = true; latch.countDown() }
+                    if (method.name == "reject") latch.countDown()
+                    null
+                } as com.facebook.react.bridge.Promise
+            module.saveRule(value.toString(), promise)
+            assertTrue(latch.await(15, TimeUnit.SECONDS))
+            return success
+        }
+        queued {
+            DeviceStorageAccess.store(context).save("""[{"id":"pc","macAddr":"001122334455","ipAddr":"127.0.0.1"}]""")
+            AutomationStore.save(context, state(rule()).put("enabled", false).put("rules", JSONArray()))
+        }
+        assertTrue(save(rule())) // Creating an enabled rule resumes the master switch.
+        assertTrue(queued { AutomationStore.load(context).getBoolean("enabled") })
+        queued {
+            val current = AutomationStore.load(context).put("enabled", false)
+            AutomationStore.save(context, current)
+        }
+        assertTrue(save(rule().put("name", "Renamed")))
+        assertFalse(queued { AutomationStore.load(context).getBoolean("enabled") })
+        assertTrue(save(rule().put("enabled", false)))
+        assertFalse(queued { AutomationStore.load(context).getBoolean("enabled") })
+        assertFalse(save(rule().put("deviceId", "missing")))
+        assertFalse(queued { AutomationStore.load(context).getBoolean("enabled") })
+        assertTrue(save(rule())) // Explicitly re-enabling an existing rule also resumes.
+        assertTrue(queued { AutomationStore.load(context).getBoolean("enabled") })
+        queued {
+            val current = AutomationStore.load(context)
+            assertEquals(0, current.getJSONArray("history").length())
+        }
+    }
+
     private fun broadcast(ruleId: String, token: String, event: String): String {
         val latch = CountDownLatch(1)
         var result = "no result"

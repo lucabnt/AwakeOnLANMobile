@@ -48,6 +48,14 @@ class AutomationModule(private val context: ReactApplicationContext) : ReactCont
             repeat(rules.length()) { if (rules.getJSONObject(it).getString("id") != clean.getString("id")) put(rules.get(it)) }
             put(clean)
         })
+        // An explicit activation resumes the master switch in the same encrypted commit.
+        // Editing an already-enabled rule must preserve a deliberate global pause.
+        if (clean.getBoolean("enabled") && old?.optBoolean("enabled") != true && !state.getBoolean("enabled")) {
+            state.put("enabled", true)
+            val resumed = state.getJSONArray("rules")
+            // Resume future schedules, without replaying occurrences missed while paused.
+            repeat(resumed.length()) { resumed.getJSONObject(it).remove("nextAt") }
+        }
         AutomationStore.save(context, state)
         AutomationScheduler.sync(context, state)
         clean.getString("id")
