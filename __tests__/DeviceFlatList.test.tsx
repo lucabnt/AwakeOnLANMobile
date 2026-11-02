@@ -73,7 +73,10 @@ test('never displays passwords and shows a toast only after successful sends', a
 
 test('shows uncertainty for unconfirmed status and sends only device IDs to native shortcuts', async () => {
   const actions = {
-    checkReachability: jest.fn().mockResolvedValue(false),
+    monitorReachability: jest
+      .fn()
+      .mockResolvedValue(JSON.stringify({ state: 'timeout', checkedAt: 1 })),
+    cancelMonitor: jest.fn().mockResolvedValue(true),
     pinWidget: jest.fn().mockResolvedValue(true),
     configureQuickTile: jest.fn().mockResolvedValue('manual'),
   };
@@ -93,7 +96,11 @@ test('shows uncertainty for unconfirmed status and sends only device IDs to nati
     await button('Status').props.onPress();
   });
   expect(alert.mock.calls.at(-1)?.[0]).toBe('Not verified');
-  expect(actions.checkReachability).toHaveBeenCalledWith('pc');
+  expect(actions.monitorReachability).toHaveBeenCalledWith(
+    'pc',
+    expect.any(String),
+    false,
+  );
   act(() => button('More').props.onPress());
   let choices = alert.mock.calls.at(-1)?.[2];
   await act(async () => {

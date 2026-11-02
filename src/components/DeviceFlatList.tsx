@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -13,15 +13,22 @@ import { useDeviceFlatListStyles } from '../styles/flatList';
 import NativeModule from '../../specs/NativeModule';
 import { DeviceType } from '../types/device';
 import { deviceActions } from '../services/deviceActions';
+import { useDeviceStatus } from '../services/useDeviceStatus';
 
 interface DeviceFlatListProps {
   setEditingDevice: (device: DeviceType | null) => void;
+  highlightedId?: string;
+  active?: boolean;
 }
 
-export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
+export const DeviceFlatList = ({
+  setEditingDevice,
+  highlightedId,
+  active = true,
+}: DeviceFlatListProps) => {
   const { devices, deleteDevice } = useDeviceContext(); // Destructure only the necessary functions from useDeviceContext() hook
   const styles = useDeviceFlatListStyles();
-  const [checking, setChecking] = useState(false);
+  const { statuses, request, cancel } = useDeviceStatus(devices, active);
 
   const moreActions = (item: DeviceType) =>
     Alert.alert(item.name || 'Saved device', 'Device actions', [
@@ -69,24 +76,27 @@ export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
     ]);
 
   const checkStatus = async (item: DeviceType) => {
-    if (checking) return;
-    setChecking(true);
-    try {
-      const reachable = await deviceActions().checkReachability(item.id);
-      Alert.alert(
-        reachable ? 'Reachable now' : 'Not verified',
-        reachable
-          ? 'The PC address responded to the TCP probe. This does not verify that the desktop is ready.'
-          : 'No response was confirmed. The PC may be asleep, or the selected TCP port may be filtered.',
-      );
-    } catch {
-      Alert.alert(
-        'Status unavailable',
-        'Set Status IP to the actual PC address and choose a TCP service port in Edit. Broadcast addresses cannot identify one PC.',
-      );
-    } finally {
-      setChecking(false);
-    }
+    const status = statuses[item.id];
+    Alert.alert(
+      status?.state === 'reachable' ? 'Reachable now' : 'Not verified',
+      `${
+        status?.checkedAt
+          ? `Last check: ${new Date(status.checkedAt).toLocaleString()}. `
+          : ''
+      }` +
+        `${
+          status?.state === 'error'
+            ? 'Check Status IP: use the actual PC address, not broadcast. '
+            : ''
+        }` +
+        'Two matching probes stabilize the indicator. No response does not prove the PC is off; a response does not prove the desktop is ready.',
+      [
+        { text: 'Close', style: 'cancel' },
+        status?.state === 'checking'
+          ? { text: 'Cancel check', onPress: () => cancel(item.id) }
+          : { text: 'Check now', onPress: () => request(item.id) },
+      ],
+    );
   };
 
   const wakeButton = (item: DeviceType) => {
@@ -110,6 +120,7 @@ export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
         'Wake packet sent · startup not verified',
         ToastAndroid.SHORT,
       );
+      request(item.id, true);
     }
   };
 
@@ -137,9 +148,25 @@ export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
   };
 
   const renderItem = ({ item }: { item: DeviceType }) => (
-    <View style={styles.itemContainer}>
+    <View
+      style={[
+        styles.itemContainer,
+        item.id === highlightedId && { borderWidth: 2 },
+      ]}
+    >
       <View style={styles.textContainer}>
         <Text style={styles.name}>{item.name || 'Saved device'}</Text>
+        <Text
+          style={styles.text}
+          accessibilityLiveRegion="none"
+          numberOfLines={1}
+        >
+          {statuses[item.id]?.state === 'checking'
+            ? '◷ Checking…'
+            : statuses[item.id]?.state === 'reachable'
+            ? '✓ Reachable'
+            : '○ Not verified'}
+        </Text>
         <Text style={styles.text}>MAC: {item.macAddr}</Text>
         <Text style={styles.text}>
           IP: {item.ipAddr || 'Default broadcast'} · UDP {item.port || '9'}
@@ -158,8 +185,7 @@ export const DeviceFlatList = ({ setEditingDevice }: DeviceFlatListProps) => {
         />
 
         <CustomButton
-          title={checking ? 'Checking…' : 'Status'}
-          disabled={checking}
+          title="Status"
           onPress={() => checkStatus(item)}
           buttonStyle={styles.editOrSubmitButton}
           buttonTextStyle={styles.buttonText}

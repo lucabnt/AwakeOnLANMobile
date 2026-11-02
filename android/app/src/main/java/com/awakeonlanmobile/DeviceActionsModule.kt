@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class DeviceActionsModule(private val context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
     private var backupPromise: Promise? = null
+    private val monitor = DeviceMonitor()
     private val listener = object : BaseActivityEventListener() {
         override fun onActivityResult(activity: Activity, requestCode: Int, resultCode: Int, data: Intent?) {
             if (requestCode == BACKUP_REQUEST) {
@@ -71,6 +72,17 @@ class DeviceActionsModule(private val context: ReactApplicationContext) : ReactC
         }
     }
 
+    @ReactMethod fun monitorReachability(id: String, session: String, postWake: Boolean, promise: Promise) {
+        if (session.length !in 1..128) { reject(promise); return }
+        DeviceStorageAccess.executor.execute {
+            try { monitor.start(session, device(id), if (postWake) 60000 else 6000, promise) }
+            catch (_: Exception) { reject(promise) }
+        }
+    }
+    @ReactMethod fun cancelMonitor(session: String, promise: Promise) {
+        DeviceStorageAccess.executor.execute { monitor.cancel(session); promise.resolve(true) }
+    }
+
     private fun device(id: String) = WidgetDevice.parseArchive(DeviceStorageAccess.store(context).load())
         .first { it.id == id }
 
@@ -88,6 +100,7 @@ class DeviceActionsModule(private val context: ReactApplicationContext) : ReactC
 
     private fun reject(promise: Promise) = promise.reject("DEVICE_ACTION_ERROR", "Could not complete the device action. Check the saved settings and retry.")
     override fun invalidate() {
+        monitor.close()
         context.removeActivityEventListener(listener)
         backupPromise?.reject("DEVICE_ACTION_CLOSED", "The app was closed.")
         backupPromise = null

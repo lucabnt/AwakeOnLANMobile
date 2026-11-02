@@ -157,6 +157,14 @@ cd android
 
 Use a disposable emulator or test device: feature tests temporarily alter the archive and Quick Settings panel, then restore the previous records and target. Also manually verify migration from an existing installation, failed saves, network errors, scans cancelled while running, launcher pin acceptance/cancellation, document-provider export/import, and real PC wake from the widget and tile.
 
+## Automation candidate architecture
+
+The 1.2.0 candidate adds `AutomationRule`, `AutomationStore`, `AutomationEngine`, `AutomationScheduler`, native alarm/external/system receivers and the React Native `AutomationModule`. Native execution does not start a JS runtime or keep a foreground service running. All archive access, final device resolution and automatic sends use `DeviceStorageAccess.executor`. `DeviceNetwork` shares UDP/TCP/ICMP operations across `WidgetDevice` and bounded `DeviceMonitor` sessions. React controls the visibility/lifecycle of status sessions and discards stale completions.
+
+The automation archive uses its own Keystore alias and AtomicFile via `ProtectedDeviceStore`, with an internal version-1 state schema. Portable backups keep the existing authenticated encryption envelope but introduce plaintext schema version 2; legacy device arrays remain supported. An encrypted pending-device journal recovers interrupted two-archive imports. Rule credentials, history, seen-event hashes, pending alarms and platform permissions are excluded from portable backups.
+
+See the [behavior and security contract](automation.md) and [validation record](automation-validation.it.md). Wi-Fi, peer-MAC discovery and network-interface selection remain second-release work; no background SSID service or MAC recovery is claimed by this candidate.
+
 ## Scope and credits
 
 The app opens on **Device List**, including on first launch when the list is empty. The home-screen widget is implemented for Android; iOS widgets are not included.
