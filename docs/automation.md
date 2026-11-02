@@ -2,17 +2,27 @@
 
 ## Create a rule
 
-Open **Automation → +**, enter a name, select a saved device and choose **One time**, **Weekly** or **External event**. **Add device** opens the existing form and returns to the draft with the saved device selected; cancelling keeps the draft. Dates use `YYYY-MM-DD`, times use local `HH:MM`, and weekdays are Monday–Sunday.
+The **+** in Device List floats at the bottom right, above the tab bar. It adds a saved PC; it does not create an automation. The list has extra bottom space so the button does not cover the last device's controls.
+
+Open **Automation → Add automation**. Setup has three steps, with **Back**, **Continue** and **Cancel** available throughout:
+
+1. **Device:** choose the PC to wake. The name is optional; a blank name becomes “Wake [device]”. **Add a device** opens the existing form and returns to the same step with the new PC selected.
+2. **When:** choose **Every week**, **Just once** or **From another app**. Schedules use the phone's local time (`HH:MM`) and one-time dates use `YYYY-MM-DD`. Weekly days are selectable chips. Choose **On time** for exact-alarm access or **Flexible** for delivery Android may delay. The permission action appears here when needed.
+3. **Review:** check the device and schedule, choose whether to enable the rule, optionally enable notifications, then **Save automation**. **Advanced options** contains day/hour filters, late tolerance and minimum interval; a basic schedule does not require opening it.
+
+For a first test, choose **Just once** with a time a few minutes in the future. For a workday routine, choose **Every week**, select Monday–Friday and enter `08:30`. Neither saving nor advancing through setup sends a test wake.
 
 Optional filters restrict permitted days and/or a time window. Supply both window limits, or leave both empty. A window such as 22:00–06:00 spans midnight and belongs to its starting day: Monday allows Monday evening and Tuesday before 06:00. Filters do not create additional triggers. The minimum interval between attempts is per rule, defaults to 60 seconds and can be set from 1 to 86,400 seconds.
 
-Review the summary, enable the rule and save. Turn on **Enable automatic wakes** to allow execution. This explicitly permits packet submission with the phone locked after the first unlock following a reboot. No automation runs before that first unlock. The manual Wake button, widget and Quick Settings behavior remain available independently of automation permissions.
+**Two switches must be on:** the switch on the individual rule and the main **Automatic wakes** switch. The main switch pauses/resumes all enabled rules; an individual switch controls only its rule. The review step explains when the main switch is still off. Enabling execution permits packet submission with the phone locked after the first unlock following a reboot. No automation runs before that first unlock. The manual Wake button, widget and Quick Settings behavior remain available independently of automation permissions.
 
-**Test now — sends a wake** asks for confirmation and performs a real submission. It honors the global switch, rule switch, filters and cooldown. Packet submission is distinct from a verified PC startup. Results appear in the rule and in the local history (last 100 attempts). Optional result notifications are off by default and require notification permission on Android 13+; refusing them does not disable rules.
+Rule cards show the target PC, when the rule runs, its next wake or pause reason, and its last attempt in plain language. **Edit** changes the rule. **More → Test wake now** asks for confirmation and performs a real submission, honoring both switches, filters and minimum interval. **More** also contains connection setup for external events and deletion. **Recent activity** shows the latest 100 attempts; **Refresh** or pulling down reloads current state. **How to use** opens a short in-app explanation.
+
+Packet submission is distinct from verified PC startup. Optional result notifications are off by default and require notification permission on Android 13+; refusing them does not disable rules. Native result codes remain unchanged internally, while the UI displays readable labels such as “Wake packet sent” or “Skipped: too soon after the previous attempt”.
 
 ## Scheduled rules and permissions
 
-Exact schedules use Android AlarmManager. On Android 12+, allow this app in **Alarms & reminders** using **Allow exact alarms**. Missing/revoked access suspends exact rules; it does not silently change them to flexible ones. Reopen the app after changing system settings to view the current status. Flexible rules use inexact alarms and do not need that special access. Android may delay them substantially, especially in Doze: there is no guaranteed delivery window.
+On-time schedules use exact Android AlarmManager alarms. On Android 12+, allow this app in **Alarms & reminders** using **Allow alarms**. Missing/revoked access suspends these rules; it does not silently change them to flexible ones. The main page shows an alarm warning only when enabled scheduled rules need that permission. Reopen the app after changing system settings to view the current status. Flexible rules use inexact alarms and do not need that special access. Android may delay them substantially, especially in Doze: there is no guaranteed delivery window.
 
 Late tolerance is visible and editable (5–1,440 minutes; exact default 5, flexible default 60). An occurrence delivered after its tolerance is recorded as skipped. There is no catch-up wake when connectivity returns. Delivery does not imply that the network is usable. Reboot/package replacement restores alarms after unlock. Clock/timezone changes recompute future local occurrences. A nonexistent daylight-saving time is skipped; a repeated civil time is consumed once. A consumed civil occurrence is retained across rule edits and clock changes. Edit the date/time for a new one-time occurrence.
 
@@ -24,7 +34,7 @@ Force-stopping the app prevents Android from delivering automation events/alarms
 
 MacroDroid was selected because its documented **Send Intent** action supports an explicit broadcast with string extras. No HTTP listener, cloud endpoint or additional automation plugin is required. This is a concrete configuration based on the provider's documentation; an end-to-end run from MacroDroid remains an acceptance check. The Android endpoint itself is exercised by instrumentation with actual broadcasts and a UDP listener. Compatibility with other automation apps is not claimed.
 
-1. Create and enable an **External event** rule, save it and open **Integration details**.
+1. Create a rule with **From another app**, save and enable it, then choose **More → Connect MacroDroid**. Connection setup is separate from choosing a schedule.
 2. In MacroDroid, select the desired trigger and add **Send Intent**.
 3. Set these fields:
 
@@ -40,7 +50,7 @@ MacroDroid was selected because its documented **Send Intent** action supports a
 
 Use letters, numbers, `_`, `.`, `:` or `-` for an event ID (1–128 characters). A retry of the same event must reuse its ID. A new event needs a new ID. Avoid a fixed event ID and avoid timestamps with spaces/slashes. When different rules target the same device for the same originating event, use the same event ID to suppress duplicate sends across those rules.
 
-The token is a 256-bit random capability, not a PC password. Only share it with the intended local automation app. Knowing a rule ID alone is insufficient. The receiver accepts no MAC, destination, port or WOL password override: it reloads the current saved device. **Revoke and replace token** invalidates the old capability immediately. Disabling/deleting the rule also revokes it; re-enabling creates a new token. Closing/backgrounding integration details hides the token. Do not put it in logs, screenshots, shared macros or version control.
+The token is a 256-bit random capability, not a PC password. Only share it with the intended local automation app. Knowing a rule ID alone is insufficient. The receiver accepts no MAC, destination, port or WOL password override: it reloads the current saved device. **Replace connection token** asks for confirmation, then invalidates the old capability immediately. Disabling/deleting the rule also revokes it; re-enabling creates a new token. Closing/backgrounding connection details hides the token. Do not put it in logs, screenshots, shared macros or version control.
 
 External admission is limited to two pending receiver operations, with per-rule cooldown and a persistent, device-scoped deduplication ledger holding the last 1,000 authenticated event identities across the app. Bursts can be dropped. This is a bounded deduplication window, not an indefinite replay-prevention protocol. History never stores token values or caller event text. No credential is exported in backups.
 

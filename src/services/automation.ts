@@ -21,6 +21,7 @@ export interface AutomationRule {
   nextAt?: number;
   suspended?: string;
   lastResult?: string;
+  lastAttempt?: number;
 }
 
 export interface AutomationState {
@@ -78,7 +79,7 @@ export function newRule(deviceId: string): AutomationRule {
 }
 
 export function ruleSummary(rule: AutomationRule): string {
-  if (rule.trigger === 'external') return 'Waiting for linked event';
+  if (rule.trigger === 'external') return 'When a linked app sends an event';
   const time = `${String(rule.hour).padStart(2, '0')}:${String(
     rule.minute,
   ).padStart(2, '0')}`;
@@ -86,7 +87,29 @@ export function ruleSummary(rule: AutomationRule): string {
     rule.trigger === 'once'
       ? rule.date
       : rule.days
+          .slice()
+          .sort()
           .map(d => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][d - 1])
           .join(', ')
-  } at ${time} · ${rule.precision}`;
+  } at ${time}`;
+}
+
+export function automationResult(result?: string): string {
+  const labels: Record<string, string> = {
+    sent: 'Wake packet sent',
+    disabled: 'Paused — no packet sent',
+    rejected: 'Event not accepted',
+    duplicate: 'Repeated event ignored',
+    'pending: delivery uncertain': 'Delivery not confirmed',
+    'skipped: late occurrence': 'Skipped: arrived too late',
+    'skipped: outside time window':
+      'Skipped: outside the allowed days or hours',
+    'skipped: cooldown': 'Skipped: too soon after the previous attempt',
+    'skipped: device removed': 'Skipped: device no longer saved',
+    'skipped: duplicate occurrence': 'Repeated schedule ignored',
+    'error: packet not confirmed': 'Packet submission failed',
+  };
+  return result
+    ? labels[result] || 'Attempt could not be completed'
+    : 'Not run yet';
 }

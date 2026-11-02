@@ -15,6 +15,7 @@ export const useDeviceFlatListStyles = () => {
   };
   return StyleSheet.create({
     list: { width: '100%' },
+    listContent: { paddingBottom: 96 },
     itemContainer: {
       padding: 16,
       borderWidth: 1,

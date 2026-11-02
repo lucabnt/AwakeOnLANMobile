@@ -11,7 +11,7 @@ This fork uses its own signing key. If Android refuses an update over another di
 ## Use
 
 1. Enable Wake-on-LAN in your PC firmware and network adapter settings.
-2. Tap **+** in **Device List**, enter the adapter MAC address and preferably your LAN broadcast destination, e.g. `192.168.1.255` on a `/24` network. An empty destination uses `255.255.255.255` (local broadcast); UDP port defaults to `9`. The optional WOL password is not your computer login password.
+2. Tap the floating **+** at the bottom right of **Device List**, enter the adapter MAC address and preferably your LAN broadcast destination, e.g. `192.168.1.255` on a `/24` network. An empty destination uses `255.255.255.255` (local broadcast); UDP port defaults to `9`. The optional WOL password is not your computer login password.
 3. Open **Device List** and tap **Wake**. A brief toast indicates packet submission; it does not confirm that the PC started. Use a trusted LAN or VPN; Wake-on-LAN packets are not encrypted.
 
 - **Widget:** select **More → Add widget**, or add it from the Android launcher. Each widget can use a different saved PC.

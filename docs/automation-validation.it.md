@@ -23,9 +23,9 @@ Ambiente: Windows, Node 24.19.0 e npm del workspace, JDK Temurin 21.0.12.1 (il J
 
 | Controllo | Risultato registrato |
 |---|---|
-| Jest | 22 test superati: regressioni archivio/context/lista e nuovi test su concorrenza, cancellazione, priorità post-wake, background/rientro |
+| Jest | 26 test superati: regressioni archivio/context/lista, concorrenza/cancellazione e quattro prove della UI guidata |
 | TypeScript | `npx tsc --noEmit` superato dopo correzione del tipo del callback AppState nei test |
-| ESLint | Nessun errore; 13 avvisi di stile inline non bloccanti |
+| ESLint | Nessun errore; 3 avvisi di stile inline non bloccanti dopo la revisione UI |
 | Dipendenze | 8 test di regressione superati; `npm audit --audit-level=low`: 0 vulnerabilità al momento della verifica |
 | Kotlin/debug | Compilazione e APK di debug/test generati |
 | Android instrumentation | 23 test superati, 0 saltati, 0 falliti sull'emulatore API 35 |
@@ -40,6 +40,14 @@ Gli APK finali e `SHA256SUMS.txt` sono raccolti in `release-artifacts/1.2.0-rc.1
 Durante la prima esecuzione sono emersi due problemi poi corretti: risposta del receiver ordinato dopo `goAsync()` e timeout del test che eseguiva PBKDF2 sulla coda dell'archivio. La risposta ora usa il `PendingResult`; la crittografia portabile gira fuori dalla coda anche nella prova, come già accade nella UI di backup. Non sono stati abbassati i parametri crittografici.
 
 ## Matrice ancora necessaria per il rilascio stabile
+
+### Revisione UI del 2 novembre 2026
+
+Il pulsante + della Device List è ora flottante, in basso a destra sopra la barra delle schede; il contenuto della lista ha spazio finale per evitare sovrapposizioni. Automation separa stato generale, schede delle regole, attività e guida contestuale. L'editor segue Dispositivo → Quando → Riepilogo, con giorni compatti, comandi di navigazione persistenti e opzioni avanzate richiudibili. Le voci tecniche di esito sono tradotte in messaggi leggibili e i permessi sono proposti quando pertinenti.
+
+Quattro nuovi test verificano: avanzamento e validazione dell'orario prima del salvataggio; attivazione esplicita senza invii durante la procedura; conservazione dei filtri nascosti e della bozza dopo errore; annullamento senza salvataggio; chiarezza della pausa globale, assenza di richieste allarmi irrilevanti per eventi esterni e conferma prima di un wake di prova. Il codice Kotlin e il contratto dei dati non sono cambiati; i 23 test nativi riportati sopra appartengono al collaudo precedente, non a una nuova esecuzione per questa revisione grafica.
+
+La build release è stata rigenerata per questa revisione e i quattro APK hanno superato il controllo di allineamento. Il controllo sull'emulatore API 35 ha verificato: FAB in basso a destra con lista vuota/popolata, schermata Automation senza permessi irrilevanti, aggiunta di un PC dalla bozza, selezione del dispositivo al ritorno, tre passaggi con comandi fissi, riepilogo e salvataggio di una regola disabilitata. Nessun errore runtime è stato rilevato nel processo dell'app. Screenshot in `release-artifacts/1.2.0-rc.1/qa/ui-revision/`; i collaudi su hardware elencati sotto restano aperti.
 
 | Configurazione/caso | Esito |
 |---|---|

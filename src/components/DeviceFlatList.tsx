@@ -219,6 +219,7 @@ export const DeviceFlatList = ({
       renderItem={renderItem}
       keyExtractor={item => item.id}
       style={styles.list}
+      contentContainerStyle={styles.listContent}
     />
   );
 };

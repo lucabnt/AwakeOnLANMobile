@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Modal,
   View,
+  StyleSheet,
 } from 'react-native';
 import { AddDeviceScreen } from './AddDeviceScreen';
 import { useIsFocused } from '@react-navigation/native';
@@ -25,20 +26,7 @@ export const DeviceListScreen = () => {
   const colors = useColors();
 
   return (
-    <SafeAreaView style={[styles.container, { justifyContent: 'flex-start' }]}>
-      <View style={{ width: '100%', alignItems: 'flex-end', marginBottom: 12 }}>
-        <CustomButton
-          title="+"
-          accessibilityLabel="Add device"
-          buttonStyle={[
-            styles.button,
-            { minWidth: 48, backgroundColor: colors.primary },
-          ]}
-          buttonTextStyle={[styles.buttonText, { fontSize: 24 }]}
-          disabled={isLoading || !!storageError}
-          onPress={() => setAdding(true)}
-        />
-      </View>
+    <SafeAreaView style={[styles.container, layout.screen]}>
       {isLoading ? (
         <ActivityIndicator accessibilityLabel="Loading devices" />
       ) : storageError ? (
@@ -68,6 +56,16 @@ export const DeviceListScreen = () => {
           />
         </>
       )}
+      <View style={layout.floatingAction}>
+        <CustomButton
+          title="+"
+          accessibilityLabel="Add device"
+          buttonStyle={[layout.fab, { backgroundColor: colors.primary }]}
+          buttonTextStyle={[styles.buttonText, layout.plus]}
+          disabled={isLoading || !!storageError}
+          onPress={() => setAdding(true)}
+        />
+      </View>
       <Modal
         visible={adding}
         animationType="slide"
@@ -84,3 +82,20 @@ export const DeviceListScreen = () => {
     </SafeAreaView>
   );
 };
+
+const layout = StyleSheet.create({
+  screen: { justifyContent: 'flex-start' },
+  floatingAction: { position: 'absolute', right: 20, bottom: 20 },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    elevation: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+  },
+  plus: { fontSize: 30, lineHeight: 36 },
+});
