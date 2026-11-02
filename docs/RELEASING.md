@@ -1,20 +1,20 @@
 # Releasing AwakeOnLANMobile
 
-The maintained branch and default branch of **lucabnt/AwakeOnLANMobile** is `main` (renamed from `personal`). This is the fork; the upstream repository is nellogan/AwakeOnLANMobile. The existing `master` branch is preserved. No pull request to upstream is needed to publish this fork.
+The maintained branch and default branch of **lucabnt/AwakeOnLANMobile** is `main`. This is the fork; the upstream repository is nellogan/AwakeOnLANMobile. The existing `master` branch is preserved. No pull request to upstream is needed to publish this fork.
 
 ## Version 1.1.0
 
 Use tag **v1.1.0**, display version **1.1.0**, and base Android versionCode **100100**. ABI-specific codes are 10010001 (ARMv7), 10010002 (ARM64), 10010003 (x86), and 10010004 (x86_64). This is a minor feature release relative to 1.0.2; no 2.0 version is needed.
 
-The current signed APKs include the header safe-area fix, broadcast fallback and Wake toast. They match the tested unsigned payloads exactly and use the same personal RSA-2048 signing certificate as the previous test build. Branch/documentation/workflow changes do not require rebuilding these APKs. Existing APK App Info may still show a `/tree/personal` web URL: GitHub redirects renamed-branch URLs to `main`.
+Release APKs must match the latest application source, including the header safe-area fix, broadcast fallback, Wake toast and repository links in App Info. Rebuild and sign again after any application-source change; documentation-only changes do not require a rebuild. App Info links directly to the repository, independently of branch names. Reuse the maintainer signing certificate for updates and verify signatures, ZIP alignment and payload identity before distribution.
 
 Distribution package: `release-artifacts/1.1.0/signed/` (ignored by Git).
 
 ## 1. Final phone check
 
-Install the signed `awakeonlanmobile-arm64-v8a-1.1.0.apk` on Pixel 9. Reuse the existing signing key to update the personal test installation without uninstalling. Verify header/menu in both themes, Wake, widget/tile, save/edit, and backup restore. Status requires the actual PC IP in Status IP when Wake targets broadcast. Packet submission does not prove successful boot.
+Install the signed `awakeonlanmobile-arm64-v8a-1.1.0.apk` on Pixel 9. Reuse the existing signing key to update the existing test installation without uninstalling. Verify header/menu in both themes, Wake, widget/tile, save/edit, and backup restore. Status requires the actual PC IP in Status IP when Wake targets broadcast. Packet submission does not prove successful boot.
 
-If application code changes, rebuild and sign again using Android Studio → Generate Signed App Bundle / APK → APK → existing personal keystore → release. Keep keys and passwords outside Git. Re-verify every APK using Android SDK `apksigner verify --verbose --print-certs` and `zipalign -c -P 16 4`. Rename `-unsigned` only after signature validation. Recompute checksums after signing and final renaming.
+If application code changes, rebuild and sign again using Android Studio → Generate Signed App Bundle / APK → APK → existing maintainer keystore → release. Keep keys and passwords outside Git. Re-verify every APK using Android SDK `apksigner verify --verbose --print-certs` and `zipalign -c -P 16 4`. Rename `-unsigned` only after signature validation. Recompute checksums after signing and final renaming.
 
 ## 2. Commit and push release documentation
 
@@ -61,16 +61,7 @@ CD is manual-only (`workflow_dispatch`), accepts an existing version tag, checks
 
 Only use the automated workflow after configuring the production environment secrets RELEASE_STORE_FILE_BASE64, RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS and RELEASE_KEY_PASSWORD with the **same signing certificate**. Select the release tag as workflow input. Do not create a competing manual release with the same tag while that workflow runs.
 
-## Other local clones and contributors
-
-For an older clone still on personal:
-
-```sh
-git branch -m personal main
-git fetch origin --prune
-git branch --set-upstream-to=origin/main main
-git remote set-head origin main
-```
+## Contributors
 
 GitHub's repository contributor list uses the default branch, now main. Commits authored with lucabnt's GitHub noreply address remain attributed; statistics may take time to refresh. Profile contribution squares have separate fork eligibility rules.
 

@@ -1,6 +1,6 @@
 # AwakeOnLANMobile
 
-Android Wake-on-LAN app with home-screen widgets, a Quick Settings shortcut, and encrypted device storage. Maintained by [lucabnt](https://github.com/lucabnt) on the **[main branch](https://github.com/lucabnt/AwakeOnLANMobile/tree/main)**, based on [nellogan/AwakeOnLANMobile](https://github.com/nellogan/AwakeOnLANMobile).
+Android Wake-on-LAN app with home-screen widgets, a Quick Settings shortcut, and encrypted device storage. Maintained by [lucabnt](https://github.com/lucabnt), based on [nellogan/AwakeOnLANMobile](https://github.com/nellogan/AwakeOnLANMobile).
 
 ## Install
 

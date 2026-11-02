@@ -113,7 +113,7 @@ export const MenuModal = ({ visible, onClose }: MenuModalProps) => {
             <Text style={styles.contactText}>
               License: GPLv3
               {'\n'}
-              Source: github.com/lucabnt/AwakeOnLANMobile/tree/personal
+              Source: github.com/lucabnt/AwakeOnLANMobile
               {'\n'}
               Report Issues: https://github.com/lucabnt/AwakeOnLANMobile/issues
               {'\n'}

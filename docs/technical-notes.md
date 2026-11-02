@@ -1,8 +1,8 @@
 # AwakeOnLANMobile — maintained fork
 
-Personal Android Wake-on-LAN fork with Keystore-backed encrypted device storage, stricter native input validation, and bounded, cancellable network scans.
+Maintained Android Wake-on-LAN fork with Keystore-backed encrypted device storage, stricter native input validation, and bounded, cancellable network scans.
 
-Maintained by [lucabnt](https://github.com/lucabnt/AwakeOnLANMobile) on the `main` branch. Based on [nellogan/AwakeOnLANMobile](https://github.com/nellogan/AwakeOnLANMobile), licensed under GPLv3. This fork preserves the upstream attribution and license.
+Maintained by [lucabnt](https://github.com/lucabnt/AwakeOnLANMobile). Based on [nellogan/AwakeOnLANMobile](https://github.com/nellogan/AwakeOnLANMobile), licensed under GPLv3. This fork preserves the upstream attribution and license.
 
 ## Features
 
@@ -107,7 +107,7 @@ Backups can be restored on another phone or installation using the backup passwo
 Prerequisites: Node.js 22.13 or newer, npm 11.17.x, a supported JDK (17 recommended), Android SDK 35, CMake, and NDK `27.1.12297006` as configured in `android/build.gradle`. The tested package manager is npm 11.17.0. Keep the repository's `.npmrc` when installing so local compatibility packages are packed rather than linked.
 
 ```sh
-git clone --branch main https://github.com/lucabnt/AwakeOnLANMobile.git
+git clone https://github.com/lucabnt/AwakeOnLANMobile.git
 cd AwakeOnLANMobile
 npm ci
 ```
@@ -123,7 +123,7 @@ cd android
 
 On Windows use `gradlew.bat`. APKs are written under `android/app/build/outputs/apk/release/`, split by architecture. Unsigned APKs must be signed before installation. For a signed build, set `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, and `RELEASE_KEY_PASSWORD` in the build environment. Keep signing credentials outside the repository.
 
-**Preserving existing devices:** an in-place update requires the same application ID and signing certificate as your installed app. A personally signed build generally cannot update an upstream-signed APK. Uninstalling the old app deletes its private records and Keystore keys; automatic migration only works when its private data survives the update. Do not uninstall expecting the migration to recover it.
+**Preserving existing devices:** an in-place update requires the same application ID and signing certificate as your installed app. A maintainer-signed build generally cannot update an upstream-signed APK. Uninstalling the old app deletes its private records and Keystore keys; automatic migration only works when its private data survives the update. Do not uninstall expecting the migration to recover it.
 
 Upstream release APKs do not include the changes in this branch. Build this fork to use its security changes.
 
