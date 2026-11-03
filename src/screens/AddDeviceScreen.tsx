@@ -3,8 +3,15 @@ import { SafeAreaView, Text } from 'react-native';
 import { useDeviceContext } from '../contexts/DeviceContext';
 import { DeviceForm } from '../components/DeviceForm';
 import { useBaseStyles } from '../styles/base';
+import { DeviceType } from '../types/device';
 
-export const AddDeviceScreen = () => {
+export const AddDeviceScreen = ({
+  onClose,
+  onSaved,
+}: {
+  onClose?: () => void;
+  onSaved?: (device: DeviceType) => void;
+}) => {
   const { addDevice, isLoading, storageError } = useDeviceContext();
   const styles = useBaseStyles();
 
@@ -12,7 +19,11 @@ export const AddDeviceScreen = () => {
     <SafeAreaView style={styles.container}>
       {storageError && <Text style={styles.text}>{storageError}</Text>}
       <DeviceForm
-        onSubmit={addDevice}
+        onSubmit={async device => {
+          await addDevice(device);
+          onSaved?.(device);
+        }}
+        onCancel={onClose}
         title={'Add Device'}
         disabled={isLoading || !!storageError}
       />

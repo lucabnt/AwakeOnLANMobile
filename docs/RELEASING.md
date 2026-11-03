@@ -2,7 +2,19 @@
 
 The maintained branch and default branch of **lucabnt/AwakeOnLANMobile** is `main`. This is the fork; the upstream repository is nellogan/AwakeOnLANMobile. The existing `master` branch is preserved. No pull request to upstream is needed to publish this fork.
 
-## Version 1.1.0
+## Current candidate: 1.2.0-rc.1
+
+The working version is `1.2.0-rc.1` (base versionCode `100200`; ABI codes `10020001`–`10020004`). See [candidate notes](releases/v1.2.0-rc.1.md), [automation guide](automation.md) and [validation record](automation-validation.it.md). The 1.1.0 instructions below are historical and must not be used to publish the candidate.
+
+1. Run Jest, TypeScript, lint, dependency regressions/audit and the full Android instrumentation suite on a disposable emulator. Record device/API and results.
+2. Build `assembleRelease`. Keep unsigned APKs under `release-artifacts/1.2.0-rc.1/unsigned/`; never label unsigned output as installable or signed.
+3. Complete the validation record on real hardware, including background/Doze/reboot/VPN behavior and the MacroDroid configuration. A passing emulator suite does not replace these gates.
+4. Sign using the existing maintainer certificate, verify with `apksigner verify --verbose --print-certs` and `zipalign -c -P 16 4`, then compute SHA-256 sums. Do not expose key material.
+5. Only after review, commit/push source and create an immutable version tag and GitHub **prerelease** with matching tested signed binaries and notes. No tag, commit, push or publication is implied by local preparation.
+
+Every subsequently distributed build needs a higher versionCode, including a stable 1.2.0 after this RC (use base `100201` or higher). Do not promote differently built binaries under an existing tag.
+
+## Historical release: 1.1.0
 
 Use tag **v1.1.0**, display version **1.1.0**, and base Android versionCode **100100**. ABI-specific codes are 10010001 (ARMv7), 10010002 (ARM64), 10010003 (x86), and 10010004 (x86_64). This is a minor feature release relative to 1.0.2; no 2.0 version is needed.
 

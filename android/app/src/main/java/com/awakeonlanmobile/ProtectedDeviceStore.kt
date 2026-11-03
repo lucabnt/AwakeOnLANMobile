@@ -17,8 +17,9 @@ internal class ProtectedDeviceStore(
     directory: File,
     private val legacyFile: File,
     private val keyAlias: String = "AwakeOnLANMobile.devices.v1",
+    fileName: String = "devices.enc",
 ) {
-    private val file = AtomicFile(File(directory, "devices.enc"))
+    private val file = AtomicFile(File(directory, fileName))
     private val header = "AWOL1".toByteArray(Charsets.US_ASCII)
     private val maxBytes = 1024 * 1024
 

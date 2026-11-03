@@ -127,7 +127,7 @@ class DeviceBackupActivity : Activity() {
                 check(!getSystemService(android.app.KeyguardManager::class.java).isDeviceLocked)
                 if (operation == "export") {
                     val json = DeviceStorageAccess.executor.submit<String> {
-                        DeviceBackup.normalize(DeviceStorageAccess.store(this).load() ?: "[]")
+                        DeviceBackup.exportDocument(this)
                     }.get()
                     val ciphertext = DeviceBackup.encrypt(json, password)
                     checkNotNull(contentResolver.openOutputStream(destination, "wt")).use { it.write(ciphertext); it.flush() }
@@ -146,7 +146,7 @@ class DeviceBackupActivity : Activity() {
                             busy = false
                             AlertDialog.Builder(this)
                                 .setTitle(R.string.backup_import)
-                                .setMessage(getString(R.string.backup_import_count, JSONArray(json).length()))
+                                .setMessage(getString(R.string.backup_import_count, DeviceBackup.countDevices(json)) + "\nImported automations stay disabled. Re-enable them explicitly; external integrations need a new token.")
                                 .setPositiveButton(R.string.backup_add) { _, _ -> commitImport() }
                                 .setNegativeButton(android.R.string.cancel) { _, _ -> decrypted = null; showForm() }
                                 .setOnCancelListener { decrypted = null; showForm() }
@@ -166,8 +166,7 @@ class DeviceBackupActivity : Activity() {
         busy = true
         DeviceStorageAccess.executor.execute {
             try {
-                val store = DeviceStorageAccess.store(this)
-                store.save(DeviceBackup.merge(store.load(), json))
+                DeviceBackup.importDocument(this, json)
                 runCatching { WakeWidgetProvider.refreshAll(this) }
                 runOnUiThread { setResult(RESULT_OK); finish() }
             } catch (_: Exception) {

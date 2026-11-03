@@ -44,6 +44,7 @@ export const validateDevices = (value: unknown): DeviceType[] => {
       'passwd',
       'statusIp',
       'statusPort',
+      'statusMethod',
     ] as const;
     for (const field of fields) {
       if (
@@ -56,6 +57,8 @@ export const validateDevices = (value: unknown): DeviceType[] => {
       }
     }
     if (
+      (item.statusMethod !== undefined &&
+        !['tcp', 'icmp'].includes(item.statusMethod)) ||
       (item.ipAddr && !NativeModule.ValidIp(item.ipAddr)) ||
       (item.statusIp && !NativeModule.ValidIp(item.statusIp)) ||
       (item.statusPort &&
@@ -87,6 +90,7 @@ export const validateDevices = (value: unknown): DeviceType[] => {
       passwd: item.passwd || '',
       statusIp: item.statusIp || '',
       statusPort: item.statusPort || '',
+      ...(item.statusMethod ? { statusMethod: item.statusMethod } : {}),
     };
   });
 };

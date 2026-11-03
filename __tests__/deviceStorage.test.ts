@@ -18,6 +18,13 @@ jest.mock('../specs/NativeModule', () => ({
 const device = { id: 'pc', macAddr: '001122334455', passwd: ' private ' };
 const backend = { load: jest.fn(), save: jest.fn() };
 
+test('preserves explicit TCP/ICMP probe settings and rejects unknown methods', () => {
+  expect(
+    validateDevices([{ ...device, statusMethod: 'icmp' }])[0].statusMethod,
+  ).toBe('icmp');
+  expect(() => validateDevices([{ ...device, statusMethod: 'udp' }])).toThrow();
+});
+
 beforeEach(() => {
   jest.clearAllMocks();
   Object.defineProperty(Platform, 'OS', {

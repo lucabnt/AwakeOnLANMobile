@@ -98,6 +98,9 @@ export const DeviceForm = ({
   const [port, setPort] = useState<string>(initialDevice?.port || '');
   const [passwd, setPasswd] = useState<string>(initialDevice?.passwd || '');
   const [statusIp, setStatusIp] = useState(initialDevice?.statusIp || '');
+  const [statusMethod, setStatusMethod] = useState<'tcp' | 'icmp'>(
+    initialDevice?.statusMethod || 'tcp',
+  );
   const [statusPort, setStatusPort] = useState(initialDevice?.statusPort || '');
   const [isSaving, setIsSaving] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -184,6 +187,7 @@ export const DeviceForm = ({
         passwd,
         statusIp: statusIp.trim(),
         statusPort,
+        statusMethod,
       });
 
       setName('');
@@ -195,6 +199,7 @@ export const DeviceForm = ({
       setPasswd('');
       setStatusIp('');
       setStatusPort('');
+      setStatusMethod('tcp');
     } catch {
       Alert.alert(
         'Save failed',
@@ -324,6 +329,19 @@ export const DeviceForm = ({
             maxLength={5}
             placeholder="An available service on your PC"
           />
+          <View style={styles.buttonContainer}>
+            <CustomButton
+              title={`Status: ${
+                statusMethod === 'icmp' ? 'ICMP / TCP echo' : 'TCP service port'
+              }`}
+              accessibilityLabel="Switch status probe between TCP and ICMP"
+              disabled={disabled || isSaving}
+              buttonTextStyle={styles.label}
+              onPress={() =>
+                setStatusMethod(statusMethod === 'tcp' ? 'icmp' : 'tcp')
+              }
+            />
+          </View>
           <View style={styles.buttonContainer}>
             <CustomButton
               title="Save"

@@ -2,12 +2,7 @@ package com.awakeonlanmobile
 
 import android.system.Os
 import android.system.OsConstants
-import java.net.DatagramPacket
-import java.net.DatagramSocket
 import java.net.InetAddress
-import java.net.InetSocketAddress
-import java.net.Socket
-import android.system.ErrnoException
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -21,6 +16,7 @@ internal class WidgetDevice(
     private val password: ByteArray,
     private val statusAddress: InetAddress,
     private val statusPort: Int,
+    private val statusMethod: String = "tcp",
 ) {
     fun packet(): ByteArray = ByteArray(102 + password.size).also { bytes ->
         bytes.fill(0xff.toByte(), 0, 6)
@@ -29,25 +25,10 @@ internal class WidgetDevice(
     }
 
     fun wake() {
-        DatagramSocket().use { socket ->
-            socket.broadcast = true
-            socket.send(DatagramPacket(packet(), 102 + password.size, address, port))
-        }
+        DeviceNetwork.wake(packet(), address, port)
     }
 
-    fun reachable(): Boolean {
-        require(!statusAddress.isMulticastAddress && !statusAddress.isAnyLocalAddress &&
-            !statusAddress.hostAddress.orEmpty().endsWith(".255"))
-        return try {
-            Socket().use { it.connect(InetSocketAddress(statusAddress, statusPort), 1500) }
-            true
-        } catch (error: java.io.IOException) {
-            // A refused connection is also a response; timeouts never prove a host is online.
-            generateSequence<Throwable>(error) { it.cause }.any {
-                it is ErrnoException && it.errno == OsConstants.ECONNREFUSED
-            }
-        }
-    }
+    fun reachable(timeout: Int = 1500): Boolean = DeviceNetwork.reachable(statusAddress, statusPort, statusMethod, timeout)
 
     companion object {
         private val macPattern = Regex("(?:[0-9a-fA-F]{12}|(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}|(?:[0-9a-fA-F]{2}-){5}[0-9a-fA-F]{2})")
@@ -80,7 +61,9 @@ internal class WidgetDevice(
                 requireNotNull(statusAddress)
                 val statusPort = field(item, "statusPort").ifEmpty { "443" }
                 require(Regex("[0-9]{1,5}").matches(statusPort) && statusPort.toInt() in 1..65535)
-                WidgetDevice(id, field(item, "name"), mac, address, port, password, statusAddress, statusPort.toInt())
+                val method = field(item, "statusMethod").ifEmpty { "tcp" }
+                require(method in listOf("tcp", "icmp"))
+                WidgetDevice(id, field(item, "name"), mac, address, port, password, statusAddress, statusPort.toInt(), method)
             }
         }
 

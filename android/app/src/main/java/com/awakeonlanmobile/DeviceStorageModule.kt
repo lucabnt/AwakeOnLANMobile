@@ -11,11 +11,18 @@ class DeviceStorageModule(context: ReactApplicationContext) : ReactContextBaseJa
     override fun getName() = "DeviceStorage"
 
     @ReactMethod
-    fun load(promise: Promise) = submit(promise) { store.load() }
+    fun load(promise: Promise) = submit(promise) {
+        runCatching { AutomationStore.load(reactApplicationContext) }
+        store.load()
+    }
 
     @ReactMethod
     fun save(json: String, promise: Promise) = submit(promise) {
         store.save(json)
+        // Device deletion must invalidate linked rules even if React closes immediately.
+        // A separate automation-key failure must not misreport a committed device save as failed.
+        // The engine independently reloads the device before every send and fails closed on archive errors.
+        runCatching { AutomationStore.reconcile(reactApplicationContext) }
         // Refresh labels and remove stale actions after a rename or deletion.
         try { WakeWidgetProvider.refreshAll(reactApplicationContext) } catch (_: Exception) {
             // A launcher failure must not turn a committed archive save into an error.

@@ -7,6 +7,7 @@ export type DeviceType = {
   passwd?: string;
   statusIp?: string;
   statusPort?: string;
+  statusMethod?: 'tcp' | 'icmp';
 };
 
 export type DeviceContextType = {

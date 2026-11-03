@@ -1,6 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { AddDeviceScreen } from '../screens/AddDeviceScreen';
+import { AutomationScreen } from '../screens/AutomationScreen';
 import { DeviceListScreen } from '../screens/DeviceListScreen';
 import { ScanHostsScreen } from '../screens/ScanHostsScreen';
 import { fonts, useColors, Colors } from '../styles/base';
@@ -53,9 +53,9 @@ export const TabNavigator = () => {
         options={{ tabBarLabel: 'Device List' }}
       />
       <Tab.Screen
-        name="AddDevice"
-        component={AddDeviceScreen}
-        options={{ tabBarLabel: 'Add Device' }}
+        name="Automation"
+        component={AutomationScreen}
+        options={{ tabBarLabel: 'Automation' }}
       />
       <Tab.Screen
         name="ScanHosts"
