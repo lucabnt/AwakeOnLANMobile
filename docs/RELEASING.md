@@ -2,17 +2,29 @@
 
 The maintained branch and default branch of **lucabnt/AwakeOnLANMobile** is `main`. This is the fork; the upstream repository is nellogan/AwakeOnLANMobile. The existing `master` branch is preserved. No pull request to upstream is needed to publish this fork.
 
-## Current candidate: 1.2.0-rc.1
+## Current candidate: 1.2.0-rc.2
 
-The working version is `1.2.0-rc.1` (base versionCode `100200`; ABI codes `10020001`–`10020004`). See [candidate notes](releases/v1.2.0-rc.1.md), [automation guide](automation.md) and [validation record](automation-validation.it.md). The 1.1.0 instructions below are historical and must not be used to publish the candidate.
+The working version is `1.2.0-rc.2` (base versionCode `100201`; ABI codes
+`10020101`-`10020104`). The published `v1.2.0-rc.1` and its APKs are immutable.
+See [candidate notes](releases/v1.2.0-rc.2.md), [network features](network-features.it.md)
+and the [pre-release review](prerelease-review-2026-11-03.it.md).
 
-1. Run Jest, TypeScript, lint, dependency regressions/audit and the full Android instrumentation suite on a disposable emulator. Record device/API and results.
-2. Build `assembleRelease`. Keep unsigned APKs under `release-artifacts/1.2.0-rc.1/unsigned/`; never label unsigned output as installable or signed.
-3. Complete the validation record on real hardware, including background/Doze/reboot/VPN behavior and the MacroDroid configuration. A passing emulator suite does not replace these gates.
-4. Sign using the existing maintainer certificate, verify with `apksigner verify --verbose --print-certs` and `zipalign -c -P 16 4`, then compute SHA-256 sums. Do not expose key material.
-5. Only after review, commit/push source and create an immutable version tag and GitHub **prerelease** with matching tested signed binaries and notes. No tag, commit, push or publication is implied by local preparation.
+1. Run Jest, TypeScript, lint, dependency checks and Android instrumentation.
+2. Build `assembleRelease` with matching versionName and versionCodes. Keep unsigned
+   output under `release-artifacts/1.2.0-rc.2/unsigned/`.
+3. Sign with the existing maintainer certificate. Renaming an old RC1 APK does not
+   update its embedded version. Do not attach it as RC2.
+4. Verify every signature with `apksigner verify --verbose --print-certs` and check
+   alignment using `zipalign -c -P 16 4`. Use filenames
+   `awakeonlanmobile-<abi>-1.2.0-rc.2.apk` only for verified signed APKs.
+5. Compute SHA-256 checksums after signing and final naming. Attach the four signed
+   APKs and `SHA256SUMS.txt` to the GitHub prerelease targeting the release commit.
+   Keep the release as a draft until the signed APKs are ready.
 
-Every subsequently distributed build needs a higher versionCode, including a stable 1.2.0 after this RC (use base `100201` or higher). Do not promote differently built binaries under an existing tag.
+Hardware checks remain open: real PC wake, background/Doze/reboot/VPN behavior and
+ARP recovery on Android 7-9. Emulator results do not replace those checks; publish
+this candidate as a prerelease, not stable. A subsequent distributed build must
+use base versionCode `100202` or higher. Never replace an existing version tag.
 
 ## Historical release: 1.1.0
 

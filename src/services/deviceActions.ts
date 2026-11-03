@@ -1,6 +1,11 @@
 import { NativeModules, Platform } from 'react-native';
 
 interface DeviceActions {
+  currentSubnet(): Promise<string>;
+  recoverIp(id: string): Promise<string>;
+  diagnose(id: string): Promise<string>;
+  diagnosticProgress(): Promise<string>;
+  cancelDiagnostics(): Promise<boolean>;
   pinWidget(id: string): Promise<boolean>;
   checkReachability(id: string): Promise<boolean>;
   monitorReachability(

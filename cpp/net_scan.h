@@ -4,6 +4,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <mutex>
 
 uint32_t IPAddrStrToUInt32(const char *input);
 void SplitCIDR(const std::string &input, size_t slash_pos, std::string &ip, int &prefix);
@@ -17,6 +18,11 @@ struct ScanControl
     std::chrono::steady_clock::time_point deadline =
         std::chrono::steady_clock::now() + std::chrono::seconds(30);
     void Check() const;
+    std::atomic<unsigned> completed{0}, total{0};
+    std::mutex mutex;
+    std::vector<std::vector<std::string>> hosts;
+    std::string status = "running";
+    std::vector<std::vector<std::string>> Snapshot();
 };
 
 class NetScan

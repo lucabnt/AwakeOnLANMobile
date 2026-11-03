@@ -94,6 +94,8 @@ Tap the tile to send a wake packet without opening the React interface. A locked
 
 ## Portable encrypted backups
 
+Export asks for the password and confirmation first, encrypts the archive, then opens the save picker. Success is shown only after the encrypted file is written and closed. Cancelling the picker or recreating the backup Activity requires a new attempt; no password is retained for retry.
+
 Open the app menu and choose **Encrypted backup**. This feature requires Android 8+ for the platform PBKDF2-HMAC-SHA-256 implementation; the core app, manual widget setup, and Quick Settings tile still support Android 7. Export and import use the Android document picker without storage permissions. Only `content://` document URIs are accepted; direct file paths and web URLs are rejected. Choose a strong, unique backup password of **12–256 characters** and confirm it when exporting. Spaces and non-ASCII characters are preserved. The password cannot be recovered from your phone's Keystore.
 
 The versioned binary `.awol` format uses PBKDF2-HMAC-SHA-256 with 600,000 iterations, a fresh 32-byte salt, AES-256-GCM, a fresh 12-byte IV, and an authenticated header. It contains all known device fields, including WOL passwords and optional status settings, inside the ciphertext. Passwords and decrypted data are not written to temporary files, preferences, pending intents, or Activity saved state. The backup screen disables screenshots and autofill. Key derivation and document I/O run off the UI and archive queues; file sizes and record counts are bounded.

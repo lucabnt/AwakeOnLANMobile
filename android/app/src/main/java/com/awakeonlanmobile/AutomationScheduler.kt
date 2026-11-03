@@ -4,7 +4,7 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Build
 import org.json.JSONObject
 
@@ -13,12 +13,13 @@ internal object AutomationScheduler {
         context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
     private fun pending(context: Context, id: String, at: Long) = PendingIntent.getBroadcast(context, 0,
-        Intent(context, AutomationAlarmReceiver::class.java).setData(Uri.parse("awol-alarm://rule/$id"))
+        Intent(context, AutomationAlarmReceiver::class.java).setData("awol-alarm://rule/$id".toUri())
             .putExtra("id", id).putExtra("at", at), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
     fun cancel(context: Context, id: String) = context.getSystemService(AlarmManager::class.java).cancel(pending(context, id, 0))
 
     fun sync(context: Context, state: JSONObject) {
+        WifiAutomation.start(context)
         val alarm = context.getSystemService(AlarmManager::class.java)
         val rules = state.getJSONArray("rules")
         val now = System.currentTimeMillis()
@@ -28,7 +29,7 @@ internal object AutomationScheduler {
             cancel(context, id)
             rule.remove("suspended")
             if (!state.getBoolean("enabled") || !rule.getBoolean("enabled")) return@repeat
-            if (rule.getString("trigger") == "external") return@repeat
+            if (rule.getString("trigger") in listOf("external", "wifi")) return@repeat
             if (rule.getString("precision") == "exact" && !exactAllowed(context)) {
                 rule.put("suspended", "Exact alarm access required")
                 return@repeat

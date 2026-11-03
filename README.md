@@ -19,7 +19,7 @@ This fork uses its own signing key. If Android refuses an update over another di
 - **Automation:** create a one-time or weekly local-time schedule, or link an external event. Rules and the global switch start disabled. Enabling them permits automatic wakes while locked after the first unlock. Exact schedules need **Alarms & reminders** access; flexible schedules can be delayed or skipped. See the [automation and MacroDroid guide](docs/automation.md).
 - **Status:** the list checks on opening/return and for up to 60 seconds after an in-app wake, stopping when hidden. Two matching probes stabilize the small row indicator; tap **Status** for details or cancellation. Set **Status IP** to the actual PC address when WOL uses broadcast; choose TCP (default port `443`) or ICMP in Edit. No response does not prove that the PC is off. Broadcast, multicast, and IPv4 addresses ending in `.255` cannot be checked.
 - **Backup:** open **menu → Encrypted backup**. Use a unique password of 12–256 characters. Import adds devices and disabled automation rules without replacing existing ones; repeated imports create duplicates. Integration tokens and history are excluded. Old device-only backups remain readable; v2 backups require this version or newer. The password cannot be recovered.
-- **Scan Hosts:** scan an IPv4 address or `/24`–`/32` subnet you are authorized to test. Scans are cancellable and limited to 256 addresses / 30 seconds.
+- **Scan Hosts:** detect the current Wi-Fi subnet or enter an IPv4 address or `/22`–`/32` subnet you are authorized to test. Scans are cancellable and limited to 1,024 addresses / 30 seconds, retaining partial results. See the [network features guide](docs/network-features.it.md) for Wi-Fi automations and diagnostics.
 - **Appearance:** switch between light and dark mode in the menu.
 
 Saved devices and WOL passwords are encrypted with Android Keystore. No accounts, ads, or cloud service are required. iOS is an upstream scaffold; these protected features are Android-only.
@@ -43,7 +43,7 @@ Without signing configuration the release APKs are unsigned. For a signed build,
 
 See [release instructions](docs/RELEASING.md), [technical/security notes](docs/technical-notes.md), and [dependency maintenance](tools/dependencies/README.md). Use a disposable emulator for `connectedDebugAndroidTest`.
 
-The working version is **1.2.0-rc.1**, a release candidate. See [release notes](docs/releases/v1.2.0-rc.1.md) and the [validation record](docs/automation-validation.it.md) for tested behavior and the hardware/integration checks required before stable publication.
+The working version is **1.2.0-rc.2**, a release candidate. See [release notes](docs/releases/v1.2.0-rc.2.md) and the [validation record](docs/automation-validation.it.md) for tested behavior and the hardware/integration checks required before stable publication.
 
 ## License and credits
 

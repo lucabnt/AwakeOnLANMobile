@@ -104,7 +104,7 @@ internal object DeviceBackup {
             require(ruleIds.add(rule.getString("id")) && rule.getString("deviceId") in ids)
             clean.put(JSONObject().apply {
                 listOf("id", "version", "name", "deviceId", "trigger", "hour", "minute", "date", "days", "precision",
-                    "toleranceMinutes", "cooldownSeconds", "windowStart", "windowEnd", "windowDays", "notify").forEach { key -> if (rule.has(key)) put(key, rule.get(key)) }
+                    "toleranceMinutes", "cooldownSeconds", "windowStart", "windowEnd", "windowDays", "notify", "wifiSsid", "ssidCondition").forEach { key -> if (rule.has(key)) put(key, rule.get(key)) }
                 put("enabled", false)
             })
         }

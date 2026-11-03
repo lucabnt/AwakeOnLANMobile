@@ -27,6 +27,8 @@ jest.mock('../src/contexts/DeviceContext', () => ({
     deleteDevice: jest.fn(),
   }),
 }));
+jest.mock('../src/styles/base', () => ({ useBaseStyles: () => ({}) }));
+
 jest.mock('../src/styles/flatList', () => ({
   useDeviceFlatListStyles: () => ({}),
 }));

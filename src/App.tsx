@@ -5,7 +5,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { TabNavigator } from './components/TabNavigator';
 import { CustomHeader } from './components/CustomHeader';
 import { MenuModal } from './components/MenuModal';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import {
   SafeAreaProvider,
   initialWindowMetrics,
@@ -19,7 +19,7 @@ const App = () => {
       <ThemeProvider>
         <NavigationContainer>
           <DeviceProvider>
-            <View style={{ flex: 1 }}>
+            <View style={layout.screen}>
               <CustomHeader onMenuPress={() => setModalVisible(true)} />
               <MenuModal
                 visible={isModalVisible}
@@ -33,5 +33,7 @@ const App = () => {
     </SafeAreaProvider>
   );
 };
+
+const layout = StyleSheet.create({ screen: { flex: 1 } });
 
 export default App;

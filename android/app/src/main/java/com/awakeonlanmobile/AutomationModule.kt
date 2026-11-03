@@ -1,7 +1,7 @@
 package com.awakeonlanmobile
 
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Build
 import android.provider.Settings
 import com.facebook.react.bridge.*
@@ -39,11 +39,11 @@ class AutomationModule(private val context: ReactApplicationContext) : ReactCont
         // Copy only editable fields. Never accept caller-provided runtime state or credentials.
         val clean = JSONObject()
         listOf("id", "version", "name", "deviceId", "enabled", "trigger", "hour", "minute", "date", "days",
-            "precision", "toleranceMinutes", "cooldownSeconds", "windowStart", "windowEnd", "windowDays", "notify").forEach { if (rule.has(it)) clean.put(it, rule.get(it)) }
+            "precision", "toleranceMinutes", "cooldownSeconds", "windowStart", "windowEnd", "windowDays", "notify", "wifiSsid", "ssidCondition").forEach { if (rule.has(it)) clean.put(it, rule.get(it)) }
         if (clean.getBoolean("enabled") && clean.getString("trigger") == "external") {
             clean.put("token", if (old?.optBoolean("enabled") == true && old.has("token")) old.getString("token") else token())
         }
-        if (old != null) listOf("lastAttempt", "lastResult", "lastOccurrence").forEach { if (old.has(it)) clean.put(it, old.get(it)) }
+        if (old != null) listOf("lastAttempt", "lastResult", "lastOccurrence", "lastWifiAttempt", "lastWifiConnection").forEach { if (old.has(it)) clean.put(it, old.get(it)) }
         state.put("rules", JSONArray().apply {
             repeat(rules.length()) { if (rules.getJSONObject(it).getString("id") != clean.getString("id")) put(rules.get(it)) }
             put(clean)
@@ -91,7 +91,7 @@ class AutomationModule(private val context: ReactApplicationContext) : ReactCont
         context.runOnUiQueueThread {
             try {
                 if (Build.VERSION.SDK_INT >= 31) checkNotNull(currentActivity).startActivity(
-                    Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))
+                    Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, "package:${context.packageName}".toUri()))
                 promise.resolve(true)
             } catch (_: Exception) { promise.reject("EXACT_SETTINGS", "Open Alarms & reminders in Android app settings.") }
         }

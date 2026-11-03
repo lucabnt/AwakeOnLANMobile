@@ -25,11 +25,15 @@
     <string name="backup_confirm">Confirm backup password</string>
     <string name="backup_password_error">Use 12–256 characters and matching passwords.</string>
     <string name="backup_export">Export encrypted backup</string>
+    <string name="backup_choose_destination">Choose where to save encrypted backup</string>
     <string name="backup_import">Import encrypted backup</string>
     <string name="backup_decrypt">Decrypt backup</string>
     <string name="backup_add">Add devices</string>
     <string name="backup_working">Working securely. Please wait…</string>
     <string name="backup_failure">Could not complete backup. Check the password, file, available storage, and permissions. Your saved devices were preserved. An interrupted export may leave an incomplete file; retry with a new file.</string>
     <string name="backup_exported">Encrypted backup exported. Store the file and password safely.</string>
-    <string name="backup_import_count">Add %1$d devices from this backup? Existing devices and widget links will be preserved. Repeated imports create additional copies.</string>
+    <plurals name="backup_import_count">
+        <item quantity="one">Add %1$d device from this backup? Existing devices and widget links will be preserved. Repeated imports create additional copies.</item>
+        <item quantity="other">Add %1$d devices from this backup? Existing devices and widget links will be preserved. Repeated imports create additional copies.</item>
+    </plurals>
 </resources>

@@ -6,7 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Build
 import org.json.JSONObject
 import java.util.UUID
@@ -39,7 +39,7 @@ class WidgetPinReceiver : BroadcastReceiver() {
             val token = UUID.randomUUID().toString()
             check(editor.putString(token, JSONObject().put("id", deviceId).put("created", now).toString()).commit())
             val callback = Intent(context, WidgetPinReceiver::class.java)
-                .setData(Uri.parse("awakeonlan://widget/pinned/$token"))
+                .setData("awakeonlan://widget/pinned/$token".toUri())
             // The system must fill EXTRA_APPWIDGET_ID. This sole mutable intent is explicit,
             // one-shot, non-exported, and validated against a short-lived private nonce.
             val flags = PendingIntent.FLAG_ONE_SHOT or

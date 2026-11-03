@@ -7,12 +7,16 @@ import {
   FlatList,
   ActivityIndicator,
   Keyboard,
+  Modal,
 } from 'react-native';
 import { CustomButton } from '../components/CustomButton';
 import { CustomRadioButton } from '../components/CustomRadioButton';
 import { fonts, useColors, Colors, useBaseStyles } from '../styles/base';
 import { useDeviceFlatListStyles } from '../styles/flatList';
 import NativeModule from '../../specs/NativeModule';
+import { deviceActions } from '../services/deviceActions';
+import { AddDeviceScreen } from './AddDeviceScreen';
+import { DeviceType } from '../types/device';
 
 interface ScanResult {
   host: string;
@@ -134,11 +138,28 @@ export const ScanHostsScreen = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [adding, setAdding] = useState<DeviceType | null>(null);
+  const [progress, setProgress] = useState('');
+  const [local, setLocal] = useState<{ cidr: string; broadcast: string }>();
   const scanning = useRef(false);
+  const detectSubnet = async () => {
+    try {
+      const value = JSON.parse(await deviceActions().currentSubnet());
+      if (mounted.current) {
+        setLocal(value);
+        setInputValue(value.cidr);
+        setError(null);
+      }
+    } catch {
+      if (mounted.current)
+        setError('Could not detect a Wi-Fi IPv4 subnet. Enter it manually.');
+    }
+  };
   const mounted = useRef(true);
 
   useEffect(() => {
     mounted.current = true;
+    detectSubnet();
     return () => {
       mounted.current = false;
       if (scanning.current) NativeModule.CancelScan();
@@ -158,6 +179,17 @@ export const ScanHostsScreen = () => {
     scanning.current = true;
     setIsLoading(true);
     setError(null);
+    setScanResult({ host: inputValue, items: [] });
+    setProgress('Starting - ');
+    const refresh = () => {
+      if (!mounted.current) return;
+      const [state, ...items] = NativeModule.ScanProgress();
+      if (state) {
+        setProgress(`${state[0]}/${state[1]} checked  -  ${state[2]}`);
+        setScanResult({ host: inputValue, items });
+      }
+    };
+    const poll = setInterval(refresh, 250);
     try {
       const results: string[][] = await NativeModule.ScanHosts(
         inputValue.trim(),
@@ -165,14 +197,16 @@ export const ScanHostsScreen = () => {
       );
       if (mounted.current) {
         setScanResult({ host: inputValue, items: results });
-        setInputValue('');
+        refresh();
       }
     } catch (scanError) {
+      refresh();
       if (mounted.current)
         setError(
           scanError instanceof Error ? scanError.message : String(scanError),
         );
     } finally {
+      clearInterval(poll);
       scanning.current = false;
       if (mounted.current) setIsLoading(false);
     }
@@ -189,6 +223,21 @@ export const ScanHostsScreen = () => {
         <Text style={styles.text}>IP: {item[0]}</Text>
         {!!item[1] && <Text style={styles.text}>Hostname: {item[1]}</Text>}
       </View>
+      <CustomButton
+        title="Add device"
+        buttonStyle={styles.scanButton}
+        buttonTextStyle={styles.buttonText}
+        onPress={() =>
+          setAdding({
+            id: '',
+            name: item[1] || '',
+            macAddr: '',
+            ipAddr:
+              scanResult?.host === local?.cidr ? local?.broadcast : item[0],
+            statusIp: item[0],
+          })
+        }
+      />
     </View>
   );
 
@@ -204,12 +253,24 @@ export const ScanHostsScreen = () => {
           onChangeText={setInputValue}
           editable={!isLoading}
           maxLength={18}
-          placeholder="IPv4 or subnet (/24 to /32)"
+          placeholder="IPv4 or subnet (/22 to /32)"
           placeholderTextColor={styles.placeholderTextColor}
         />
         {error && <Text style={styles.errorText}>{error}</Text>}
         <Text style={styles.text}>
-          Maximum 256 addresses and 30 seconds per scan.
+          Maximum 1,024 addresses, 16 parallel probes and 30 seconds.
+          Interrupted scans keep partial results. MAC addresses must be entered
+          manually.
+        </Text>
+        <CustomButton
+          title="Use current Wi-Fi subnet"
+          disabled={isLoading}
+          onPress={detectSubnet}
+          buttonStyle={styles.scanButton}
+          buttonTextStyle={styles.buttonText}
+        />
+        <Text style={styles.text} accessibilityLiveRegion="polite">
+          {progress}
         </Text>
         <CustomRadioButton
           options={radioOptions}
@@ -247,7 +308,7 @@ export const ScanHostsScreen = () => {
             style={styles.spinner}
           />
         )}
-        {scanResult && !isLoading && (
+        {scanResult && (
           <>
             <Text style={styles.resultsHeader}>
               Results for {scanResult.host}:
@@ -265,6 +326,19 @@ export const ScanHostsScreen = () => {
           </>
         )}
       </View>
+      <Modal
+        visible={!!adding}
+        animationType="slide"
+        onRequestClose={() => setAdding(null)}
+      >
+        {adding && (
+          <AddDeviceScreen
+            initialDevice={adding}
+            onClose={() => setAdding(null)}
+            onSaved={() => setAdding(null)}
+          />
+        )}
+      </Modal>
     </SafeAreaView>
   );
 };

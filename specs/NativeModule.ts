@@ -10,6 +10,7 @@ export interface Spec extends TurboModule {
     passwd: string,
   ) => void;
   readonly ScanHosts: (input: string, mode: string) => Promise<string[][]>;
+  readonly ScanProgress: () => string[][];
   readonly CancelScan: () => void;
 }
 

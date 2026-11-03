@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { DeviceToolsModal } from './DeviceToolsModal';
 import {
   View,
   Text,
@@ -6,6 +7,7 @@ import {
   Alert,
   Platform,
   ToastAndroid,
+  StyleSheet,
 } from 'react-native';
 import { useDeviceContext } from '../contexts/DeviceContext';
 import { CustomButton } from './CustomButton';
@@ -28,6 +30,7 @@ export const DeviceFlatList = ({
 }: DeviceFlatListProps) => {
   const { devices, deleteDevice } = useDeviceContext(); // Destructure only the necessary functions from useDeviceContext() hook
   const styles = useDeviceFlatListStyles();
+  const [toolsDevice, setToolsDevice] = useState<DeviceType | null>(null);
   const { statuses, request, cancel } = useDeviceStatus(devices, active);
 
   const moreActions = (item: DeviceType) =>
@@ -92,6 +95,7 @@ export const DeviceFlatList = ({
         'Two matching probes stabilize the indicator. No response does not prove the PC is off; a response does not prove the desktop is ready.',
       [
         { text: 'Close', style: 'cancel' },
+        { text: 'Advanced diagnostics', onPress: () => setToolsDevice(item) },
         status?.state === 'checking'
           ? { text: 'Cancel check', onPress: () => cancel(item.id) }
           : { text: 'Check now', onPress: () => request(item.id) },
@@ -151,7 +155,7 @@ export const DeviceFlatList = ({
     <View
       style={[
         styles.itemContainer,
-        item.id === highlightedId && { borderWidth: 2 },
+        item.id === highlightedId && layout.highlighted,
       ]}
     >
       <View style={styles.textContainer}>
@@ -214,12 +218,22 @@ export const DeviceFlatList = ({
   );
 
   return (
-    <FlatList
-      data={devices}
-      renderItem={renderItem}
-      keyExtractor={item => item.id}
-      style={styles.list}
-      contentContainerStyle={styles.listContent}
-    />
+    <>
+      {toolsDevice && (
+        <DeviceToolsModal
+          device={toolsDevice}
+          onClose={() => setToolsDevice(null)}
+        />
+      )}
+      <FlatList
+        data={devices}
+        renderItem={renderItem}
+        keyExtractor={item => item.id}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+      />
+    </>
   );
 };
+
+const layout = StyleSheet.create({ highlighted: { borderWidth: 2 } });

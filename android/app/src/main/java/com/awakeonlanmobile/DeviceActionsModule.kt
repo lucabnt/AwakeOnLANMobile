@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class DeviceActionsModule(private val context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
     private var backupPromise: Promise? = null
     private val monitor = DeviceMonitor()
+    private val diagnostics = DeviceDiagnostics()
     private val listener = object : BaseActivityEventListener() {
         override fun onActivityResult(activity: Activity, requestCode: Int, resultCode: Int, data: Intent?) {
             if (requestCode == BACKUP_REQUEST) {
@@ -83,6 +84,43 @@ class DeviceActionsModule(private val context: ReactApplicationContext) : ReactC
         DeviceStorageAccess.executor.execute { monitor.cancel(session); promise.resolve(true) }
     }
 
+    @ReactMethod fun currentSubnet(promise: Promise) {
+        try { promise.resolve(NetworkTools.local(context).toString()) }
+        catch (_: Exception) { promise.reject("NO_SUBNET", "Connect to a Wi-Fi network with an IPv4 address.") }
+    }
+    @ReactMethod fun recoverIp(id: String, promise: Promise) {
+        if (!recovering.compareAndSet(false, true)) {
+            promise.reject("RECOVERY_BUSY", "IP recovery is already running.")
+            return
+        }
+        DeviceStorageAccess.executor.execute {
+            try {
+                val archive = org.json.JSONArray(DeviceStorageAccess.store(context).load())
+                val item = (0 until archive.length()).map { archive.getJSONObject(it) }.first { it.getString("id") == id }
+                val mac = item.getString("macAddr")
+                network.execute {
+                    try { promise.resolve(NetworkTools.recover(context, mac).toString()) }
+                    catch (_: Exception) { promise.reject("RECOVERY_FAILED", "Could not verify a unique MAC/IP association on this Wi-Fi network.") }
+                    finally { recovering.set(false) }
+                }
+            } catch (_: Exception) { recovering.set(false); reject(promise) }
+        }
+    }
+    @ReactMethod fun diagnose(id: String, promise: Promise) {
+        if (!diagnostics.begin()) { promise.reject("DIAGNOSTICS_BUSY", "Diagnostics already running."); return }
+        DeviceStorageAccess.executor.execute {
+            try {
+                val target = device(id)
+                network.execute {
+                    try { promise.resolve(diagnostics.run(target)) }
+                    catch (_: Exception) { promise.reject("DIAGNOSTICS_FAILED", "Check the actual PC status address and retry.") }
+                }
+            } catch (_: Exception) { diagnostics.release(); reject(promise) }
+        }
+    }
+    @ReactMethod fun diagnosticProgress(promise: Promise) { promise.resolve(diagnostics.snapshot()) }
+    @ReactMethod fun cancelDiagnostics(promise: Promise) { diagnostics.cancel(); promise.resolve(true) }
+
     private fun device(id: String) = WidgetDevice.parseArchive(DeviceStorageAccess.store(context).load())
         .first { it.id == id }
 
@@ -101,6 +139,7 @@ class DeviceActionsModule(private val context: ReactApplicationContext) : ReactC
     private fun reject(promise: Promise) = promise.reject("DEVICE_ACTION_ERROR", "Could not complete the device action. Check the saved settings and retry.")
     override fun invalidate() {
         monitor.close()
+        diagnostics.cancel()
         context.removeActivityEventListener(listener)
         backupPromise?.reject("DEVICE_ACTION_CLOSED", "The app was closed.")
         backupPromise = null
@@ -110,6 +149,7 @@ class DeviceActionsModule(private val context: ReactApplicationContext) : ReactC
     companion object {
         private const val BACKUP_REQUEST = 7393
         private val checking = AtomicBoolean(false)
+        private val recovering = AtomicBoolean(false)
         private val network = Executors.newSingleThreadExecutor { Thread(it, "DeviceStatus").apply { isDaemon = true } }
     }
 }

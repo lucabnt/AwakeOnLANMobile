@@ -30,6 +30,7 @@ class NativeModule : public NativeModuleCxxSpec<NativeModule>
     void SendWOL(jsi::Runtime &rt, std::string mac_addr, std::string ip_addr, std::string port, std::string passwd);
 
     jsi::Value ScanHosts(jsi::Runtime &rt, std::string input, std::string mode_selected);
+    std::vector<std::vector<std::string>> ScanProgress(jsi::Runtime &rt);
     void CancelScan(jsi::Runtime &rt);
 
   private:
