@@ -7,8 +7,8 @@ Data: 2 novembre 2026. Baseline precedente: 1.1.0, commit `a31c0a2`. Le modifich
 | Ambito | Decisione e prova disponibile | Stato |
 |---|---|---|
 | Scheduler | AlarmManager nativo, allarmi singoli, modalità puntuale/flessibile; niente timer JS o servizio permanente | Implementato; precisione in Doze da misurare |
-| Primo provider eventi | MacroDroid, azione Send Intent documentata; endpoint esplicito con capacità casuale revocabile, nessuna sostituzione dei dati del PC | Receiver provato realmente; MacroDroid da collaudare |
-| Prima integrazione | [Configurazione concreta e contratto](automation.md#macrodroid-first-integration-selected-for-validation) | Pronta; non dichiarata compatibile prima della prova end-to-end |
+| Primo provider eventi | MacroDroid, azione Send Intent documentata; endpoint esplicito con capacità casuale revocabile, nessuna sostituzione dei dati del PC | Macro reale 6.0.11 provata end-to-end su API 35 il 3 novembre; hardware aperto |
+| Prima integrazione | [Configurazione concreta e contratto](automation.md#macrodroid-first-integration-selected-for-validation), [collaudo riproducibile](macrodroid-validation.it.md) | Superata per la configurazione verificata su emulatore; nessuna garanzia generale su altri telefoni/provider |
 | Permessi minimi | Internet, boot, wake lock breve; accesso allarmi esatti solo per regole puntuali; notifiche opzionali | Manifest e flussi implementati |
 | Rete/VPN | Nessun bind a reti alternative e nessun bypass intenzionale della VPN | Più interfacce e VPN da provare su hardware |
 | Wi-Fi/SSID | Nessun osservatore o permesso Wi-Fi introdotto nella candidata | Secondo rilascio |
@@ -58,7 +58,7 @@ La build release è stata rigenerata per questa revisione e i quattro APK hanno 
 | Processo terminato, rimozione dai recenti, riavvio/primo sblocco, aggiornamento, arresto forzato e riapertura | Aperto; distinguere e annotare i casi |
 | Cambio ora/fuso e DST di sistema con allarmi pendenti | Algoritmo e consumo occorrenza provati; broadcast di sistema reali aperti |
 | Rete assente, solo LAN senza Internet, Ethernet/Wi-Fi/VPN e perdita rete durante l'invio | Aperto |
-| MacroDroid: macro reale, ID evento dinamico, duplicato, token revocato e sola regola collegata | Aperto; non sostituire con il solo comando ADB |
+| MacroDroid: macro reale, ID evento dinamico, duplicato, token revocato e sola regola collegata | Superato su Pixel 9 emulato / API 35 con MacroDroid 6.0.11 il 3 novembre; telefono fisico e Doze prolungato aperti |
 | Backup tra due installazioni fisiche, import ripetuto, annullamento provider documenti e riattivazione esplicita | Invarianti automatiche provate; flusso fisico aperto |
 | Accessibilità, temi, caratteri grandi, lista piena/vuota, aggiunta/annullamento/errore e ritorno alla bozza | Smoke test UI in tema scuro, lista vuota/piena e ritorno alla bozza superato; matrice completa e hardware aperti |
 | PC reale: risveglio e stato ICMP filtrato/TCP disponibile | Aperto |
@@ -74,6 +74,12 @@ Verifica di questa modifica: 27 test Jest, TypeScript, ESLint (0 errori, 3 avvis
 
 Gli APK unsigned sono stati aggiornati. Gli APK firmati generati prima di questa modifica non la contengono: rigenerare e firmare la build con lo stesso certificato del manutentore prima del collaudo sul telefono.
 
-Chiudere e registrare gli esiti della matrice prima di dichiarare completato il primo rilascio del piano o pubblicare una versione stabile. In particolare la prima integrazione deve essere provata dentro MacroDroid e lo scheduler deve essere misurato in background. La candidata rende codice, contratto, test e documentazione revisionabili senza sostituire questi collaudi con promesse.
+### Collaudo MacroDroid del 3 novembre 2026
+
+Una macro creata nell'interfaccia reale di MacroDroid 6.0.11, con trigger Screen Off e azione Send Intent, ha superato il percorso completo fino alla ricezione UDP su loopback. Il test opzionale `MacroDroidAcceptanceTest` si è concluso con `OK (1 test)`: cinque pacchetti da 102 byte, tutti confrontati byte per byte con il magic packet atteso, otto checkpoint sul conteggio e cronologia limitata alla sola regola collegata fra due abilitate. Superati ID fisso/duplicato, due eventi con `lab-{system_time_ms}`, pausa/ripresa globale, vecchio token revocato e collegamento aggiornato al nuovo token. Il test non invia broadcast né invoca il motore: gli invii provengono da MacroDroid. Dettagli, limiti e procedura nel [registro dedicato](macrodroid-validation.it.md).
+
+Questa prova usa l'app debug con il receiver nativo corrente e un processo mantenuto vivo dall'instrumentation. Non dimostra la sopravvivenza del processo, la consegna in Doze prolungato o l'accensione di un PC fisico. Nessun codice di produzione o APK distribuito è stato modificato per questo collaudo; sono stati aggiunti soltanto il fixture opzionale e la documentazione. Non è una nuova esecuzione dell'intera suite Android.
+
+Chiudere e registrare gli esiti della matrice prima di dichiarare completato il primo rilascio del piano o pubblicare una versione stabile. La prima integrazione è ora provata dentro MacroDroid su emulatore; lo scheduler deve ancora essere misurato in background e restano i collaudi su hardware. La candidata rende codice, contratto, test e documentazione revisionabili senza sostituire questi collaudi con promesse.
 
 Nessun commit, push, tag o release GitHub è stato creato da questa preparazione. Per firmare/pubblicare seguire [RELEASING.md](RELEASING.md), usando un versionCode crescente per ogni build distribuita.

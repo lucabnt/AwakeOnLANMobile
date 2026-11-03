@@ -34,7 +34,7 @@ Force-stopping the app prevents Android from delivering automation events/alarms
 
 ## MacroDroid: first integration selected for validation
 
-MacroDroid was selected because its documented **Send Intent** action supports an explicit broadcast with string extras. No HTTP listener, cloud endpoint or additional automation plugin is required. This is a concrete configuration based on the provider's documentation; an end-to-end run from MacroDroid remains an acceptance check. The Android endpoint itself is exercised by instrumentation with actual broadcasts and a UDP listener. Compatibility with other automation apps is not claimed.
+MacroDroid was selected because its documented **Send Intent** action supports an explicit broadcast with string extras. No HTTP listener, cloud endpoint or additional automation plugin is required. On 3 November 2026, an actual MacroDroid 6.0.11 macro was configured through its UI and validated on a Pixel 9 emulator running Android 15 / API 35: Screen Off → Send Intent → AwakeOnLANMobile receiver → verified UDP magic packet. Dynamic event IDs, duplicate suppression, global pause/resume, revoked credentials and reconnection with a new token passed. This validates that configuration; physical-phone battery policies, prolonged Doze and real PC startup remain separate checks. See the [reproducible acceptance record](macrodroid-validation.it.md). Compatibility with other automation apps is not claimed.
 
 1. Create a rule with **From another app**, save and enable it, then choose **More → Connect MacroDroid**. Connection setup is separate from choosing a schedule.
 2. In MacroDroid, select the desired trigger and add **Send Intent**.
@@ -49,6 +49,8 @@ MacroDroid was selected because its documented **Send Intent** action supports a
 | String extra `rule_id` | Value shown for the selected rule |
 | String extra `token` | Private token shown for the selected rule |
 | String extra `event_id` | A unique ID for this occurrence, e.g. a persistent counter with a macro-specific prefix |
+
+Select **String** in the type selector below each of the three extras. Leave Category as **None**, Data and MIME type empty, and Flags as `0` for this configuration. A simple dynamic ID tested in MacroDroid 6.0.11 is `desk-{system_time_ms}`: MacroDroid substitutes the current Unix time in milliseconds. Use a distinct prefix for each macro. This example is suitable for occasional events without retries; simultaneous events within the same millisecond or a clock adjustment can collide. For reliable event identity and retries, increment a persistent counter once for each originating event, retain that ID, and reuse it for retries instead of evaluating a new timestamp.
 
 Use letters, numbers, `_`, `.`, `:` or `-` for an event ID (1–128 characters). A retry of the same event must reuse its ID. A new event needs a new ID. Avoid a fixed event ID and avoid timestamps with spaces/slashes. When different rules target the same device for the same originating event, use the same event ID to suppress duplicate sends across those rules.
 

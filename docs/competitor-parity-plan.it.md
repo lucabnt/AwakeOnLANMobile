@@ -2,7 +2,7 @@
 
 Analisi del 2 novembre 2026. Baseline locale: AwakeOnLANMobile 1.1.0, commit `a31c0a2`. Questo documento pianifica il lavoro: non introduce funzionalità nell'app.
 
-Stato implementazione: candidata locale **1.2.0-rc.1**, punti 1–5 in sviluppo/verifica. Vedere [note della candidata](releases/v1.2.0-rc.1.md), [guida automazioni](automation.md) e [registro delle prove e collaudi aperti](automation-validation.it.md). I criteri P0 su hardware e il collaudo end-to-end MacroDroid restano necessari prima di dichiarare completato il primo rilascio.
+Stato implementazione: candidata locale **1.2.0-rc.1**, punti 1–5 in sviluppo/verifica. Vedere [note della candidata](releases/v1.2.0-rc.1.md), [guida automazioni](automation.md) e [registro delle prove e collaudi aperti](automation-validation.it.md). Il 3 novembre 2026 è stato superato il [collaudo end-to-end con una macro reale MacroDroid 6.0.11 su emulatore API 35](macrodroid-validation.it.md). I criteri P0 su hardware e le prove in background prolungato restano necessari prima di dichiarare completato il primo rilascio.
 
 ## Obiettivo e metodo
 
