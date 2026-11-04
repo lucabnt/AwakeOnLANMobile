@@ -91,6 +91,23 @@ const useDynamicStyles = () => {
       width: 120,
       backgroundColor: colors.saveOrEditButtonColor,
     },
+    subnetButton: {
+      alignSelf: 'center',
+      alignItems: 'center',
+      maxWidth: '100%',
+      minHeight: 48,
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      marginBottom: 12,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.borderColor,
+      backgroundColor: colors.surface,
+    },
+    subnetButtonText: {
+      ...flatListStyles.buttonText,
+      textAlign: 'center',
+    },
     clearResultsButtonActive: {
       ...baseStyles.button,
       width: 120,
@@ -257,18 +274,18 @@ export const ScanHostsScreen = () => {
           placeholderTextColor={styles.placeholderTextColor}
         />
         {error && <Text style={styles.errorText}>{error}</Text>}
+        <CustomButton
+          title="Use current Wi-Fi subnet"
+          disabled={isLoading}
+          onPress={detectSubnet}
+          buttonStyle={styles.subnetButton}
+          buttonTextStyle={styles.subnetButtonText}
+        />
         <Text style={styles.text}>
           Maximum 1,024 addresses, 16 parallel probes and 30 seconds.
           Interrupted scans keep partial results. MAC addresses must be entered
           manually.
         </Text>
-        <CustomButton
-          title="Use current Wi-Fi subnet"
-          disabled={isLoading}
-          onPress={detectSubnet}
-          buttonStyle={styles.scanButton}
-          buttonTextStyle={styles.buttonText}
-        />
         <Text style={styles.text} accessibilityLiveRegion="polite">
           {progress}
         </Text>
