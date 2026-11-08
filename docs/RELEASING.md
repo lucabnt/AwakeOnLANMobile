@@ -2,29 +2,28 @@
 
 The maintained branch and default branch of **lucabnt/AwakeOnLANMobile** is `main`. This is the fork; the upstream repository is nellogan/AwakeOnLANMobile. The existing `master` branch is preserved. No pull request to upstream is needed to publish this fork.
 
-## Current candidate: 1.2.0-rc.2
+## Current candidate: 1.2.0-rc.3
 
-The working version is `1.2.0-rc.2` (base versionCode `100201`; ABI codes
-`10020101`-`10020104`). The published `v1.2.0-rc.1` and its APKs are immutable.
-See [candidate notes](releases/v1.2.0-rc.2.md), [network features](network-features.it.md)
-and the [pre-release review](prerelease-review-2026-11-03.it.md).
+The working version is `1.2.0-rc.3` (base versionCode `100202`; ABI codes
+`10020201`-`10020204`). The published RC1 and RC2 releases are immutable.
+This candidate refines the Scan Hosts Wi-Fi subnet control.
 
-1. Run Jest, TypeScript, lint, dependency checks and Android instrumentation.
-2. Build `assembleRelease` with matching versionName and versionCodes. Keep unsigned
-   output under `release-artifacts/1.2.0-rc.2/unsigned/`.
-3. Sign with the existing maintainer certificate. Renaming an old RC1 APK does not
-   update its embedded version. Do not attach it as RC2.
-4. Verify every signature with `apksigner verify --verbose --print-certs` and check
-   alignment using `zipalign -c -P 16 4`. Use filenames
-   `awakeonlanmobile-<abi>-1.2.0-rc.2.apk` only for verified signed APKs.
-5. Compute SHA-256 checksums after signing and final naming. Attach the four signed
-   APKs and `SHA256SUMS.txt` to the GitHub prerelease targeting the release commit.
-   Keep the release as a draft until the signed APKs are ready.
+See [RC3 notes](releases/v1.2.0-rc.3.md) and the
+[step-by-step APK preparation guide](releases/v1.2.0-rc.3-apk-preparation.it.md).
+The GitHub release is a **draft** until signed artifacts and checks are ready.
 
-Hardware checks remain open: real PC wake, background/Doze/reboot/VPN behavior and
-ARP recovery on Android 7-9. Emulator results do not replace those checks; publish
-this candidate as a prerelease, not stable. A subsequent distributed build must
-use base versionCode `100202` or higher. Never replace an existing version tag.
+1. Build the draft's target commit using JDK 17 and Android Studio's signed APK
+   wizard, reusing the maintainer certificate from RC2.
+2. Verify all four APK signatures, embedded version/codes and 16 KiB alignment.
+3. Stage verified signed files as `awakeonlanmobile-<abi>-1.2.0-rc.3.apk` in
+   `release-artifacts/1.2.0-rc.3/signed/`, then generate `SHA256SUMS.txt`.
+4. Test updating RC2 without uninstalling and check the subnet action in both
+   themes. Upload the four signed APKs and checksums to the existing RC3 draft.
+5. Publish only when ready, as a prerelease, keeping stable/latest unchanged.
+
+Do not rename RC2 binaries as RC3 or overwrite existing release assets. Hardware
+validation limits from RC2 still apply. A subsequent distributed build needs base
+versionCode `100203` or higher. Never replace an existing version tag.
 
 ## Historical release: 1.1.0
 

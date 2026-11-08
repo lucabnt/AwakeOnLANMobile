@@ -43,7 +43,7 @@ Without signing configuration the release APKs are unsigned. For a signed build,
 
 See [release instructions](docs/RELEASING.md), [technical/security notes](docs/technical-notes.md), and [dependency maintenance](tools/dependencies/README.md). Use a disposable emulator for `connectedDebugAndroidTest`.
 
-The working version is **1.2.0-rc.2**, a release candidate. See [release notes](docs/releases/v1.2.0-rc.2.md) and the [validation record](docs/automation-validation.it.md) for tested behavior and the hardware/integration checks required before stable publication.
+The working version is **1.2.0-rc.3**, a release candidate. See [release notes](docs/releases/v1.2.0-rc.3.md) and the [validation record](docs/automation-validation.it.md) for tested behavior and the hardware/integration checks required before stable publication.
 
 ## License and credits
 
