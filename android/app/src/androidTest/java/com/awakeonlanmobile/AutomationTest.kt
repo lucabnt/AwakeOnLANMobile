@@ -220,7 +220,7 @@ class AutomationTest {
     @Test fun backupV2RemapsRulesDisablesThemAndRecoversInterruptedImport() = isolated {
         val exported = queued {
             DeviceStorageAccess.store(context).save("""[{"id":"pc","macAddr":"001122334455","statusMethod":"icmp"}]""")
-            AutomationStore.save(context, state(rule()))
+            AutomationStore.save(context, state(rule().put("ssidCondition", "Office Wi-Fi")))
             DeviceBackup.exportDocument(context)
         }
         assertFalse(exported.contains("token")); assertFalse(exported.contains("history")); assertFalse(exported.contains("nextAt"))
@@ -234,6 +234,8 @@ class AutomationTest {
             val importedRule = state.getJSONArray("rules").getJSONObject(1)
             assertEquals(devices.getJSONObject(1).getString("id"), importedRule.getString("deviceId"))
             assertFalse(importedRule.getBoolean("enabled")); assertFalse(importedRule.has("token"))
+            assertEquals("Office Wi-Fi", importedRule.getString("ssidCondition"))
+            AutomationRule.validate(importedRule)
             assertEquals("icmp", devices.getJSONObject(1).getString("statusMethod"))
             val before = state.toString()
             fails { DeviceBackup.importDocument(context, exported.replace("\"version\":2", "\"version\":99")) }

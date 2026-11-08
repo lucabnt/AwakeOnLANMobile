@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Linking,
   Modal,
   PermissionsAndroid,
   Platform,
@@ -71,7 +72,7 @@ export function AutomationEditor({
 
   const scheduledDraft = () => {
     const minutes =
-      draft.trigger === 'external'
+      draft.trigger === 'external' || draft.trigger === 'wifi'
         ? draft.hour * 60 + draft.minute
         : parseTime(time);
     if (draft.trigger === 'weekly' && !draft.days.length)
@@ -126,6 +127,8 @@ export function AutomationEditor({
           'The selected device is no longer saved. Go back and choose another.',
         );
       configured = scheduledDraft();
+      if (draft.trigger === 'wifi' && !draft.wifiSsid?.trim())
+        throw new Error('Enter the Wi-Fi network name.');
       if (!!windowStart !== !!windowEnd)
         throw new Error('Set both allowed-time limits, or leave both empty.');
       const start = windowStart ? parseTime(windowStart) : -1;
@@ -297,6 +300,11 @@ export function AutomationEditor({
                 ],
                 ['once', 'Just once', 'Choose a future date and time.'],
                 [
+                  'wifi',
+                  'Wi-Fi connection',
+                  'Wake when this phone connects to the named network.',
+                ],
+                [
                   'external',
                   'From another app',
                   'Connect a MacroDroid event after saving this automation.',
@@ -315,7 +323,21 @@ export function AutomationEditor({
                 }}
               />
             ))}
-            {draft.trigger === 'external' ? (
+            {draft.trigger === 'wifi' ? (
+              <View style={styles.notice}>
+                {field(
+                  'Wi-Fi network name (SSID)',
+                  draft.wifiSsid || '',
+                  wifiSsid => setDraft({ ...draft, wifiSsid }),
+                  'Exact network name',
+                  32,
+                )}
+                <Text style={styles.muted}>
+                  Repeated events for the same connection are ignored. Brief
+                  reconnects within five minutes are ignored too.
+                </Text>
+              </View>
+            ) : draft.trigger === 'external' ? (
               <View style={styles.notice}>
                 <Text style={styles.text}>
                   After saving, enable this rule and open More → Connect
@@ -403,7 +425,12 @@ export function AutomationEditor({
               <Text style={styles.eyebrow}>WAKE</Text>
               <Text style={styles.heading}>{deviceName}</Text>
               <Text style={styles.text}>{ruleSummary(draft)}</Text>
-              {draft.trigger !== 'external' && (
+              {!!draft.ssidCondition && (
+                <Text style={styles.muted}>
+                  Required Wi-Fi: {draft.ssidCondition}
+                </Text>
+              )}
+              {(draft.trigger === 'once' || draft.trigger === 'weekly') && (
                 <Text style={styles.muted}>
                   {draft.precision === 'exact'
                     ? 'On-time schedule'
@@ -432,6 +459,37 @@ export function AutomationEditor({
                 </Text>
               )}
             </View>
+            {(draft.trigger === 'wifi' || !!draft.ssidCondition) && (
+              <>
+                <Text style={styles.muted}>
+                  Android requires precise location and location services to
+                  read SSIDs. For wakes while the app is closed, allow location
+                  all the time in app settings. If the SSID is unavailable, no
+                  packet is sent.
+                </Text>
+                <AutomationButton
+                  title="Allow Wi-Fi identification"
+                  onPress={async () => {
+                    try {
+                      await PermissionsAndroid.requestMultiple([
+                        PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+                        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+                      ]);
+                    } catch {
+                      setError(
+                        'Grant precise location in Android app settings.',
+                      );
+                    }
+                  }}
+                />
+                <AutomationButton
+                  title="Open app permissions"
+                  onPress={() => {
+                    Linking.openSettings();
+                  }}
+                />
+              </>
+            )}
             <AutomationToggle
               title="Enable this automation"
               description="Turn this on to make the rule ready. Leave it off to save it for later."
@@ -451,7 +509,7 @@ export function AutomationEditor({
               </View>
             )}
             {draft.enabled &&
-              draft.trigger !== 'external' &&
+              (draft.trigger === 'once' || draft.trigger === 'weekly') &&
               draft.precision === 'exact' &&
               !exactAllowed && (
                 <Text style={styles.muted}>
@@ -496,6 +554,14 @@ export function AutomationEditor({
             )}
             {advanced && (
               <View style={styles.card}>
+                {field(
+                  'Required Wi-Fi SSID (optional condition)',
+                  draft.ssidCondition || '',
+                  ssidCondition => setDraft({ ...draft, ssidCondition }),
+                  'Only send on this network',
+                  32,
+                )}
+
                 <Text style={styles.heading}>
                   Only allow wakes at these times
                 </Text>
@@ -529,7 +595,7 @@ export function AutomationEditor({
                   None selected means every day. An overnight window belongs to
                   the day it starts.
                 </Text>
-                {draft.trigger !== 'external' && (
+                {(draft.trigger === 'once' || draft.trigger === 'weekly') && (
                   <>
                     {field(
                       'Skip if more than this many minutes late',

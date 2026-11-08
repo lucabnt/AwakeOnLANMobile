@@ -30,7 +30,7 @@ internal object AutomationRule {
         require(rule.getString("name").length in 1..120)
         require(rule.getString("deviceId").length in 1..128)
         rule.getBoolean("enabled")
-        require(rule.getString("trigger") in listOf("once", "weekly", "external"))
+        require(rule.getString("trigger") in listOf("once", "weekly", "external", "wifi"))
         require(rule.getInt("hour") in 0..23 && rule.getInt("minute") in 0..59)
         require(rule.getString("precision") in listOf("exact", "flexible"))
         require(rule.getInt("toleranceMinutes") in 5..1440)
@@ -56,6 +56,10 @@ internal object AutomationRule {
         val start = rule.optInt("windowStart", -1)
         val end = rule.optInt("windowEnd", -1)
         require((start == -1 && end == -1) || (start in 0..1439 && end in 0..1439 && start != end))
+        listOf("wifiSsid", "ssidCondition").forEach { key ->
+            if (rule.has(key)) require(rule.get(key) is String && rule.getString(key).toByteArray(Charsets.UTF_8).size <= 32 && !rule.getString(key).contains('\u0000'))
+        }
+        if (rule.getString("trigger") == "wifi") require(rule.optString("wifiSsid").isNotBlank())
         return rule
     }
 
@@ -72,7 +76,7 @@ internal object AutomationRule {
         cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
 
     fun next(rule: JSONObject, after: Long, zone: TimeZone = TimeZone.getDefault()): Long? {
-        if (rule.getString("trigger") == "external") return null
+        if (rule.getString("trigger") in listOf("external", "wifi")) return null
         val hour = rule.getInt("hour")
         val minute = rule.getInt("minute")
         if (rule.getString("trigger") == "once") return candidate(rule.getString("date"), hour, minute, zone)?.takeIf { it > after }

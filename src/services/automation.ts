@@ -6,7 +6,9 @@ export interface AutomationRule {
   name: string;
   deviceId: string;
   enabled: boolean;
-  trigger: 'once' | 'weekly' | 'external';
+  trigger: 'once' | 'weekly' | 'external' | 'wifi';
+  wifiSsid?: string;
+  ssidCondition?: string;
   date: string;
   hour: number;
   minute: number;
@@ -79,6 +81,8 @@ export function newRule(deviceId: string): AutomationRule {
 }
 
 export function ruleSummary(rule: AutomationRule): string {
+  if (rule.trigger === 'wifi')
+    return `When connected to Wi-Fi: ${rule.wifiSsid}`;
   if (rule.trigger === 'external') return 'When a linked app sends an event';
   const time = `${String(rule.hour).padStart(2, '0')}:${String(
     rule.minute,
@@ -104,6 +108,7 @@ export function automationResult(result?: string): string {
     'skipped: late occurrence': 'Skipped: arrived too late',
     'skipped: outside time window':
       'Skipped: outside the allowed days or hours',
+    'skipped: Wi-Fi condition': 'Skipped: required Wi-Fi network unavailable',
     'skipped: cooldown': 'Skipped: too soon after the previous attempt',
     'skipped: device removed': 'Skipped: device no longer saved',
     'skipped: duplicate occurrence': 'Repeated schedule ignored',

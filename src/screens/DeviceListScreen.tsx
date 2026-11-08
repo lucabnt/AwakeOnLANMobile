@@ -40,7 +40,7 @@ export const DeviceListScreen = () => {
           />
         </>
       ) : devices.length === 0 ? (
-        <Text style={[styles.text, { fontSize: 24, fontWeight: 'bold' }]}>
+        <Text style={[styles.text, layout.emptyMessage]}>
           No devices saved. Tap + to add your first device.
         </Text>
       ) : (
@@ -84,6 +84,7 @@ export const DeviceListScreen = () => {
 };
 
 const layout = StyleSheet.create({
+  emptyMessage: { fontSize: 24, fontWeight: 'bold' },
   screen: { justifyContent: 'flex-start' },
   floatingAction: { position: 'absolute', right: 20, bottom: 20 },
   fab: {

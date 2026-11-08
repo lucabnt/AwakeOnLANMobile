@@ -106,7 +106,7 @@ export const AutomationScreen = () => {
     state?.rules.some(
       rule =>
         rule.enabled &&
-        rule.trigger !== 'external' &&
+        (rule.trigger === 'once' || rule.trigger === 'weekly') &&
         rule.precision === 'exact',
     ) && !state?.exactAllowed;
   const disabled = busy || isLoading || !!storageError;

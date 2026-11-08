@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Bundle
 import android.text.InputType
 import android.view.View
@@ -22,6 +23,7 @@ class DeviceBackupActivity : Activity() {
     private var uri: Uri? = null
     private var busy = false
     private var decrypted: String? = null
+    private var pendingExport: ByteArray? = null
 
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
@@ -29,7 +31,7 @@ class DeviceBackupActivity : Activity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         setResult(RESULT_CANCELED)
         mode = state?.getString("mode").orEmpty()
-        uri = state?.getString("uri")?.let { Uri.parse(it) }
+        uri = if (mode == "import") state?.getString("uri")?.toUri() else null
         showForm()
     }
 
@@ -41,7 +43,7 @@ class DeviceBackupActivity : Activity() {
 
     override fun onSaveInstanceState(out: Bundle) {
         out.putString("mode", mode)
-        out.putString("uri", uri?.toString())
+        if (mode == "import") out.putString("uri", uri?.toString())
         // Passwords and decrypted archives are deliberately never saved in Activity state.
         super.onSaveInstanceState(out)
     }
@@ -50,10 +52,10 @@ class DeviceBackupActivity : Activity() {
         val column = nativeColumn()
         column.addView(TextView(this).apply { setText(R.string.backup_title); textSize = 24f })
         column.addView(TextView(this).apply { text = message ?: getString(R.string.backup_explanation); textSize = 16f })
-        if (uri == null) {
+        if (mode != "export" && uri == null) {
             column.addView(Button(this).apply {
                 setText(R.string.backup_export)
-                setOnClickListener { choose("export") }
+                setOnClickListener { mode = "export"; showForm() }
             })
             column.addView(Button(this).apply {
                 setText(R.string.backup_import)
@@ -66,7 +68,7 @@ class DeviceBackupActivity : Activity() {
             val confirm = passwordInput(R.string.backup_confirm)
             if (mode == "export") column.addView(confirm)
             column.addView(Button(this).apply {
-                setText(if (mode == "export") R.string.backup_export else R.string.backup_decrypt)
+                setText(if (mode == "export") R.string.backup_choose_destination else R.string.backup_decrypt)
                 setOnClickListener {
                     if (busy) return@setOnClickListener
                     if (password.length() !in 12..256 || (mode == "export" && password.text.toString() != confirm.text.toString())) {
@@ -101,52 +103,62 @@ class DeviceBackupActivity : Activity() {
         if (mode == "export") intent.putExtra(Intent.EXTRA_TITLE, "awakeonlan-backup.awol")
         else intent.type = "*/*"
         try { startActivityForResult(intent, 1) }
-        catch (_: Exception) { showForm(getString(R.string.backup_failure)) }
+        catch (_: Exception) { pendingExport = null; showForm(getString(R.string.backup_failure)) }
     }
 
     @Deprecated("Activity result API is used without adding an Activity dependency")
     override fun onActivityResult(request: Int, result: Int, data: Intent?) {
         super.onActivityResult(request, result, data)
+        if (request != 1) return
         if (request == 1 && result == RESULT_OK) {
             uri = runCatching { DeviceBackup.documentUri(checkNotNull(data?.data)) }.getOrNull()
-            if (uri == null) { showForm(getString(R.string.backup_failure)); return }
+            if (uri == null) { pendingExport = null; showForm(getString(R.string.backup_failure)); return }
+            if (mode == "export") {
+                val ciphertext = pendingExport
+                pendingExport = null
+                if (ciphertext == null) { uri = null; showForm(getString(R.string.backup_failure)); return }
+                writeExport(uri!!, ciphertext)
+                return
+            }
         }
+        pendingExport = null
         showForm()
     }
 
     private fun begin(password: CharArray) {
         busy = true
-        val destination = checkNotNull(uri)
+        val destination = uri
         val operation = mode
         setContentView(nativeColumn().apply {
             addView(TextView(this@DeviceBackupActivity).apply { setText(R.string.backup_working); textSize = 20f })
         })
         crypto.execute {
             try {
-                DeviceBackup.documentUri(destination)
                 check(!getSystemService(android.app.KeyguardManager::class.java).isDeviceLocked)
                 if (operation == "export") {
                     val json = DeviceStorageAccess.executor.submit<String> {
                         DeviceBackup.exportDocument(this)
                     }.get()
                     val ciphertext = DeviceBackup.encrypt(json, password)
-                    checkNotNull(contentResolver.openOutputStream(destination, "wt")).use { it.write(ciphertext); it.flush() }
                     runOnUiThread {
                         if (!isFinishing && !isDestroyed) {
-                            uri = null; busy = false
-                            showForm(getString(R.string.backup_exported))
+                            pendingExport = ciphertext
+                            busy = false
+                            showForm(getString(R.string.backup_choose_destination))
+                            choose("export")
                         }
                     }
                 } else {
-                    val bytes = checkNotNull(contentResolver.openInputStream(destination)).use { DeviceBackup.read(it) }
+                    val bytes = checkNotNull(contentResolver.openInputStream(DeviceBackup.documentUri(checkNotNull(destination)))).use { DeviceBackup.read(it) }
                     val json = DeviceBackup.decrypt(bytes, password)
                     runOnUiThread {
                         if (!isFinishing && !isDestroyed) {
                             decrypted = json
                             busy = false
+                            val count = DeviceBackup.countDevices(json)
                             AlertDialog.Builder(this)
                                 .setTitle(R.string.backup_import)
-                                .setMessage(getString(R.string.backup_import_count, DeviceBackup.countDevices(json)) + "\nImported automations stay disabled. Re-enable them explicitly; external integrations need a new token.")
+                                .setMessage(resources.getQuantityString(R.plurals.backup_import_count, count, count) + "\nImported automations stay disabled. Re-enable them explicitly; external integrations need a new token.")
                                 .setPositiveButton(R.string.backup_add) { _, _ -> commitImport() }
                                 .setNegativeButton(android.R.string.cancel) { _, _ -> decrypted = null; showForm() }
                                 .setOnCancelListener { decrypted = null; showForm() }
@@ -158,6 +170,33 @@ class DeviceBackupActivity : Activity() {
                 runOnUiThread { if (!isFinishing && !isDestroyed) { busy = false; showForm(getString(R.string.backup_failure)) } }
             } finally { password.fill('\u0000') }
         }
+    }
+
+    private fun writeExport(destination: Uri, ciphertext: ByteArray) {
+        busy = true
+        setContentView(nativeColumn().apply {
+            addView(TextView(this@DeviceBackupActivity).apply { setText(R.string.backup_working) })
+        })
+        crypto.execute {
+            val success = runCatching {
+                check(!getSystemService(android.app.KeyguardManager::class.java).isDeviceLocked)
+                checkNotNull(contentResolver.openOutputStream(DeviceBackup.documentUri(destination), "wt")).use {
+                    it.write(ciphertext); it.flush()
+                }
+            }.isSuccess
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
+                    uri = null; mode = ""; busy = false
+                    showForm(getString(if (success) R.string.backup_exported else R.string.backup_failure))
+                }
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        pendingExport = null
+        decrypted = null
+        super.onDestroy()
     }
 
     private fun commitImport() {

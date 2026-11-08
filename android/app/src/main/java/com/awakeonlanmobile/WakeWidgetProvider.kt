@@ -7,7 +7,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import android.widget.RemoteViews
 
 class WakeWidgetProvider : AppWidgetProvider() {
@@ -92,7 +92,7 @@ class WakeWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_status, context.getString(status))
             val wake = Intent(context, WakeWidgetProvider::class.java).apply {
                 action = ACTION_WAKE
-                data = Uri.parse("awakeonlan://widget/wake/$id")
+                data = "awakeonlan://widget/wake/$id".toUri()
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
             }
             views.setOnClickPendingIntent(R.id.widget_wake, PendingIntent.getBroadcast(
@@ -100,7 +100,7 @@ class WakeWidgetProvider : AppWidgetProvider() {
             ))
             // Always offer configuration/retry, even after deletion or a temporary storage error.
             val configure = Intent(context, WakeWidgetConfigureActivity::class.java).apply {
-                data = Uri.parse("awakeonlan://widget/configure/$id")
+                data = "awakeonlan://widget/configure/$id".toUri()
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
             }
             views.setOnClickPendingIntent(R.id.widget_configure, PendingIntent.getActivity(

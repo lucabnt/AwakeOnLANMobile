@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <functional>
 #include <iostream>
+#include <thread>
 
 static void rejects(const std::function<void()> &operation)
 {
@@ -37,6 +38,37 @@ int main()
     control->cancelled = false;
     control->deadline = std::chrono::steady_clock::now() - std::chrono::seconds(1);
     rejects([&] { NetScan(control).DetermineAndRunOperation("127.0.0.1", Mode::CONNECT); });
+
+    // /22 bounds and wraparound are valid, /21 is rejected.
+    start = end = IPAddrStrToUInt32("255.255.255.255");
+    DetermineIPRange(22, start, end);
+    assert(static_cast<uint64_t>(end) - start + 1 == 1024);
+    rejects([&] { DetermineIPRange(21, start, end); });
+    auto benchmark = std::make_shared<ScanControl>();
+    auto began = std::chrono::steady_clock::now();
+    auto loopback = NetScan(benchmark).DetermineAndRunOperation("127.0.0.1/22", Mode::CONNECT);
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - began).count();
+    assert(benchmark->completed == 1024 && benchmark->Snapshot()[0][2] == "complete");
+    assert(loopback.size() == 1024 && elapsed < 10000);
+    std::cout << "1024 loopback TCP addresses: " << elapsed << " ms\n";
+
+    // Reserved benchmark network (198.18.0.0/15): bounded TCP timeout, no public hosts.
+    auto bounded = std::make_shared<ScanControl>();
+    began = std::chrono::steady_clock::now();
+    NetScan(bounded).DetermineAndRunOperation("198.18.0.0/22", Mode::CONNECT);
+    elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - began).count();
+    assert(bounded->completed == 1024 && elapsed < 15000);
+    std::cout << "1024 benchmark-network TCP addresses: " << elapsed << " ms\n";
+
+    auto partial = std::make_shared<ScanControl>();
+    partial->deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(250);
+    NetScan(partial).DetermineAndRunOperation("198.18.0.0/22", Mode::CONNECT);
+    assert(partial->completed < partial->total && partial->Snapshot()[0][2] == "timeout");
+    partial = std::make_shared<ScanControl>();
+    std::thread cancel([partial] { std::this_thread::sleep_for(std::chrono::milliseconds(200)); partial->cancelled = true; });
+    NetScan(partial).DetermineAndRunOperation("198.18.0.0/22", Mode::CONNECT);
+    cancel.join();
+    assert(partial->completed < partial->total && partial->Snapshot()[0][2] == "cancelled");
 
     // Empty UI destinations are mapped to nullptr by the native bridge.
     AWakeOnLAN defaults(nullptr, nullptr, "001122334455", nullptr, false);

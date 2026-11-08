@@ -4,6 +4,7 @@ import ReactTestRenderer, { act } from 'react-test-renderer';
 import { AutomationEditor } from '../src/components/AutomationEditor';
 import {
   AutomationButton,
+  AutomationChoice,
   AutomationToggle,
 } from '../src/components/AutomationControls';
 import { AutomationScreen } from '../src/screens/AutomationScreen';
@@ -250,4 +251,57 @@ test('explains global pause, hides irrelevant alarm prompts and requires confirm
   expect(api.test).toHaveBeenCalledWith(rule.id);
   await act(async () => tree.unmount());
   alert.mockRestore();
+});
+
+test('Wi-Fi triggers require an SSID, skip alarm controls and preserve the SSID condition', async () => {
+  const save = jest.fn().mockResolvedValue(undefined);
+  let tree!: ReactTestRenderer.ReactTestRenderer;
+  await act(async () => {
+    tree = ReactTestRenderer.create(
+      <AutomationEditor
+        rule={newRule('pc')}
+        exactAllowed={false}
+        globallyEnabled
+        onSave={save}
+        onCancel={() => {}}
+      />,
+    );
+  });
+  act(() => button(tree, 'Continue').props.onPress());
+  act(() =>
+    tree.root
+      .findAllByType(AutomationChoice)
+      .find(node => node.props.title === 'Wi-Fi connection')!
+      .props.onPress(),
+  );
+  expect(field(tree, 'Time on this phone')).toBeUndefined();
+  act(() => button(tree, 'Continue').props.onPress());
+  await act(async () => {
+    await button(tree, 'Save automation').props.onPress();
+  });
+  expect(save).not.toHaveBeenCalled();
+  expect(text(tree)).toContain('Enter the Wi-Fi network name');
+  act(() => button(tree, 'Back').props.onPress());
+  act(() =>
+    field(tree, 'Wi-Fi network name (SSID)').props.onChangeText('Office Wi-Fi'),
+  );
+  act(() => button(tree, 'Continue').props.onPress());
+  act(() => button(tree, 'Advanced options').props.onPress());
+  act(() =>
+    field(tree, 'Required Wi-Fi SSID (optional condition)').props.onChangeText(
+      'Office Wi-Fi',
+    ),
+  );
+  await act(async () => {
+    await button(tree, 'Save automation').props.onPress();
+  });
+  expect(save).toHaveBeenCalledWith(
+    expect.objectContaining({
+      trigger: 'wifi',
+      wifiSsid: 'Office Wi-Fi',
+      ssidCondition: 'Office Wi-Fi',
+    }),
+  );
+  expect(text(tree)).not.toContain('This rule will also need Alarms');
+  await act(async () => tree.unmount());
 });

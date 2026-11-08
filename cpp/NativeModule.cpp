@@ -41,6 +41,11 @@ void NativeModule::SendWOL(jsi::Runtime &rt, std::string mac, std::string ip, st
     }
 }
 
+std::vector<std::vector<std::string>> NativeModule::ScanProgress(jsi::Runtime &)
+{
+    return scanControl_ ? scanControl_->Snapshot() : std::vector<std::vector<std::string>>{};
+}
+
 void NativeModule::CancelScan(jsi::Runtime &)
 {
     if (scanControl_) scanControl_->cancelled = true;
@@ -82,6 +87,10 @@ jsi::Value NativeModule::ScanHosts(jsi::Runtime &rt, std::string input, std::str
             catch (...)
             {
                 error = "Scan failed.";
+            }
+            if (!error.empty()) {
+                std::lock_guard<std::mutex> lock(control->mutex);
+                control->status = control->cancelled ? "cancelled" : "failed";
             }
             state->running = false;
             if (!state->alive) return;

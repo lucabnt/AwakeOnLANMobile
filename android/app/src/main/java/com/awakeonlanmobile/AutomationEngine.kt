@@ -7,16 +7,18 @@ import org.json.JSONObject
 
 /** Called on the shared storage queue, including the final device lookup and UDP send. */
 internal object AutomationEngine {
-    fun execute(context: Context, id: String, event: String, at: Long? = null, token: String? = null, test: Boolean = false): String {
+    fun execute(context: Context, id: String, event: String, at: Long? = null, token: String? = null, test: Boolean = false, wifi: Boolean = false): String {
         val state = AutomationStore.load(context)
         val rules = state.getJSONArray("rules")
         val rule = (0 until rules.length()).map { rules.getJSONObject(it) }.firstOrNull { it.getString("id") == id } ?: return "rejected"
         if (!state.getBoolean("enabled") || !rule.getBoolean("enabled")) return "disabled"
         if (!test) {
-            if (at == null) {
+            if (wifi) {
+                if (rule.getString("trigger") != "wifi" || WifiAutomation.ssid(context) != rule.optString("wifiSsid")) return "rejected"
+            } else if (at == null) {
                 if (rule.getString("trigger") != "external" || token == null || !rule.has("token")) return "rejected"
                 if (!MessageDigest.isEqual(token.toByteArray(), rule.getString("token").toByteArray())) return "rejected"
-            } else if (rule.getString("trigger") == "external" || rule.optLong("nextAt", -1) != at ||
+            } else if (rule.getString("trigger") in listOf("external", "wifi") || rule.optLong("nextAt", -1) != at ||
                 (rule.getString("precision") == "exact" && !AutomationScheduler.exactAllowed(context))) return "rejected"
         }
         val now = System.currentTimeMillis()
@@ -31,6 +33,12 @@ internal object AutomationEngine {
         if (at != null && (now < at || now - at > rule.getInt("toleranceMinutes") * 60_000L)) result = "skipped: late occurrence"
         if (!AutomationRule.allowed(rule, now)) result = "skipped: outside time window"
         if (now - rule.optLong("lastAttempt", 0) < rule.getInt("cooldownSeconds") * 1000L) result = "skipped: cooldown"
+        val requiredSsid = rule.optString("ssidCondition")
+        if (requiredSsid.isNotEmpty() && WifiAutomation.ssid(context) != requiredSsid) result = "skipped: Wi-Fi condition"
+        // Repeated callbacks and brief reconnects must not submit another packet.
+        if (wifi && rule.optString("lastWifiConnection") == WifiAutomation.connectionKey(context)) return "duplicate"
+        if (wifi && now - rule.optLong("lastWifiAttempt", 0) < maxOf(300, rule.getInt("cooldownSeconds")) * 1000L) return "duplicate"
+        if (wifi) rule.put("lastWifiAttempt", now).put("lastWifiConnection", WifiAutomation.connectionKey(context))
         val device = WidgetDevice.parseArchive(DeviceStorageAccess.store(context).load()).firstOrNull { it.id == rule.getString("deviceId") }
         if (device == null) { result = "skipped: device removed"; rule.put("enabled", false).remove("token") }
         if (duplicate) result = "skipped: duplicate occurrence"

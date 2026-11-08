@@ -6,9 +6,11 @@ import { useBaseStyles } from '../styles/base';
 import { DeviceType } from '../types/device';
 
 export const AddDeviceScreen = ({
+  initialDevice,
   onClose,
   onSaved,
 }: {
+  initialDevice?: DeviceType;
   onClose?: () => void;
   onSaved?: (device: DeviceType) => void;
 }) => {
@@ -19,6 +21,7 @@ export const AddDeviceScreen = ({
     <SafeAreaView style={styles.container}>
       {storageError && <Text style={styles.text}>{storageError}</Text>}
       <DeviceForm
+        initialDevice={initialDevice}
         onSubmit={async device => {
           await addDevice(device);
           onSaved?.(device);

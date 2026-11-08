@@ -5,6 +5,18 @@
 #include <poll.h>
 #include <sys/wait.h>
 #include <thread>
+#include <algorithm>
+
+std::vector<std::vector<std::string>> ScanControl::Snapshot()
+{
+    std::lock_guard<std::mutex> lock(mutex);
+    auto result = hosts;
+    std::sort(result.begin(), result.end(), [](const auto &a, const auto &b) {
+        return IPAddrStrToUInt32(a[0].c_str()) < IPAddrStrToUInt32(b[0].c_str());
+    });
+    result.insert(result.begin(), {std::to_string(completed.load()), std::to_string(total.load()), status});
+    return result;
+}
 
 void ScanControl::Check() const
 {
@@ -26,12 +38,12 @@ void SplitCIDR(const std::string &input, size_t slash, std::string &ip, int &pre
     if (slash == std::string::npos || slash > 15) throw std::invalid_argument("Invalid CIDR address.");
     ip = input.substr(0, slash);
     IPAddrStrToUInt32(ip.c_str());
-    prefix = static_cast<int>(ParseDecimal(input.substr(slash + 1), 24, 32));
+    prefix = static_cast<int>(ParseDecimal(input.substr(slash + 1), 22, 32));
 }
 
 void DetermineIPRange(int prefix, uint32_t &start, uint32_t &end)
 {
-    if (prefix < 24 || prefix > 32) throw std::invalid_argument("Use a subnet from /24 to /32 (256 addresses maximum).");
+    if (prefix < 22 || prefix > 32) throw std::invalid_argument("Use a subnet from /22 to /32 (1024 addresses maximum).");
     const uint32_t mask = prefix == 32 ? UINT32_MAX : UINT32_MAX << (32 - prefix);
     start &= mask;
     end = start | ~mask;
@@ -140,20 +152,48 @@ std::vector<std::vector<std::string>> NetScan::DetermineAndRunOperation(const st
         start = end = IPAddrStrToUInt32(ip.c_str());
         DetermineIPRange(prefix, start, end);
     }
-    std::vector<std::vector<std::string>> hosts;
-    // Use a 64-bit counter to include the final address without IPv4 wraparound.
-    for (uint64_t ip = start; ip <= end; ++ip)
-    {
-        control_->Check();
-        const bool found = mode == Mode::PING ? PingCheck(static_cast<uint32_t>(ip)) : ConnectCheck(static_cast<uint32_t>(ip));
-        if (found)
-        {
-            in_addr address{htonl(static_cast<uint32_t>(ip))};
-            char text[INET_ADDRSTRLEN]{};
-            if (!inet_ntop(AF_INET, &address, text, sizeof(text))) throw std::runtime_error("Invalid IPv4 address.");
-            // Reverse DNS has no portable bounded timeout; don't let it stall cancellation.
-            hosts.push_back({text, ""});
+    control_->Check();
+    control_->total = static_cast<unsigned>(static_cast<uint64_t>(end) - start + 1);
+    std::atomic<uint64_t> next{start};
+    std::vector<std::thread> workers;
+    std::exception_ptr failure;
+    auto work = [&] {
+        while (true) {
+            const auto ip = next.fetch_add(1);
+            if (ip > end) return;
+            try {
+                control_->Check();
+                const bool found = mode == Mode::PING ? PingCheck(static_cast<uint32_t>(ip)) : ConnectCheck(static_cast<uint32_t>(ip));
+                if (found) {
+                    in_addr address{htonl(static_cast<uint32_t>(ip))};
+                    char text[INET_ADDRSTRLEN]{};
+                    if (!inet_ntop(AF_INET, &address, text, sizeof(text))) throw std::runtime_error("Invalid IPv4 address.");
+                    std::lock_guard<std::mutex> lock(control_->mutex);
+                    control_->hosts.push_back({text, ""});
+                }
+                ++control_->completed;
+            } catch (...) {
+                std::lock_guard<std::mutex> lock(control_->mutex);
+                if (control_->cancelled || std::chrono::steady_clock::now() >= control_->deadline) return;
+                if (!failure) failure = std::current_exception();
+                return;
+            }
         }
+    };
+    try {
+        for (unsigned i = 0; i < std::min(16u, control_->total.load()); ++i) workers.emplace_back(work);
+    } catch (...) {
+        control_->cancelled = true;
+        for (auto &worker : workers) worker.join();
+        throw;
     }
-    return hosts;
+    for (auto &worker : workers) worker.join();
+    if (failure) std::rethrow_exception(failure);
+    {
+        std::lock_guard<std::mutex> lock(control_->mutex);
+        control_->status = control_->cancelled ? "cancelled" : control_->completed < control_->total ? "timeout" : "complete";
+    }
+    auto result = control_->Snapshot();
+    result.erase(result.begin());
+    return result;
 }
