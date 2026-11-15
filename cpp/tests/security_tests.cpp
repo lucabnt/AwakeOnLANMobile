@@ -44,6 +44,16 @@ int main()
     DetermineIPRange(22, start, end);
     assert(static_cast<uint64_t>(end) - start + 1 == 1024);
     rejects([&] { DetermineIPRange(21, start, end); });
+    auto ping = std::make_shared<ScanControl>();
+    auto replies = NetScan(ping).DetermineAndRunOperation("127.0.0.1", Mode::PING);
+    assert(replies.size() == 1 && replies.front()[0] == "127.0.0.1");
+    assert(ping->completed == 1 && ping->Snapshot()[0][2] == "complete");
+    SocketHandle pingSocket(socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP));
+    if (pingSocket.get() >= 0) {
+        auto pingRange = std::make_shared<ScanControl>();
+        NetScan(pingRange).DetermineAndRunOperation("198.18.0.0/22", Mode::PING);
+        assert(pingRange->completed == 1024 && pingRange->Snapshot()[0][2] == "complete");
+    }
     auto benchmark = std::make_shared<ScanControl>();
     auto began = std::chrono::steady_clock::now();
     auto loopback = NetScan(benchmark).DetermineAndRunOperation("127.0.0.1/22", Mode::CONNECT);

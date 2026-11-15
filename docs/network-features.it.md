@@ -30,7 +30,7 @@ rete Wi-Fi. Use current Wi-Fi subnet ripete il rilevamento. Restano disponibili
 indirizzi IPv4 singoli e subnet da /22 a /32; subnet piu grandi richiedono la scelta
 manuale di una porzione di rete. VPN e reti senza IPv4 non vengono indovinate.
 
-La scansione utilizza al massimo 16 sonde contemporanee, 1.024 indirizzi e 30 secondi.
+La scansione accetta fino a 1.024 indirizzi e dura al massimo 30 secondi. Ping usa socket ICMP con ripiego sul comando di sistema se il kernel nega l’accesso. TCP verifica la porta 443 con 16 sonde contemporanee.
 Avanzamento e host trovati compaiono durante il lavoro. Cancel scan e la scadenza
 conservano i risultati parziali e distinguono cancelled, timeout e complete.
 Una scansione Ping su una rete senza risposte puo scadere prima di controllare tutti

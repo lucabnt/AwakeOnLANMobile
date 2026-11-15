@@ -34,5 +34,6 @@ class NetScan
     bool ConnectCheck(uint32_t ip);
     std::vector<std::vector<std::string>> DetermineAndRunOperation(const std::string &input, Mode mode);
   private:
+    bool ScanPingDatagrams(uint32_t start);
     std::shared_ptr<ScanControl> control_;
 };
