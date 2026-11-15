@@ -11,15 +11,16 @@ internal object AutomationEngine {
         val state = AutomationStore.load(context)
         val rules = state.getJSONArray("rules")
         val rule = (0 until rules.length()).map { rules.getJSONObject(it) }.firstOrNull { it.getString("id") == id } ?: return "rejected"
+        if (!test && !wifi && at == null) {
+            if (rule.getString("trigger") != "external" || token == null || !rule.has("token")) return "rejected"
+            if (!MessageDigest.isEqual(token.toByteArray(), rule.getString("token").toByteArray())) return "rejected"
+        }
         if (!state.getBoolean("enabled") || !rule.getBoolean("enabled")) return "disabled"
         if (!test) {
             if (wifi) {
                 if (rule.getString("trigger") != "wifi" || WifiAutomation.ssid(context) != rule.optString("wifiSsid")) return "rejected"
-            } else if (at == null) {
-                if (rule.getString("trigger") != "external" || token == null || !rule.has("token")) return "rejected"
-                if (!MessageDigest.isEqual(token.toByteArray(), rule.getString("token").toByteArray())) return "rejected"
-            } else if (rule.getString("trigger") in listOf("external", "wifi") || rule.optLong("nextAt", -1) != at ||
-                (rule.getString("precision") == "exact" && !AutomationScheduler.exactAllowed(context))) return "rejected"
+            } else if (at != null && (rule.getString("trigger") in listOf("external", "wifi") || rule.optLong("nextAt", -1) != at ||
+                (rule.getString("precision") == "exact" && !AutomationScheduler.exactAllowed(context)))) return "rejected"
         }
         val now = System.currentTimeMillis()
         val seen = state.getJSONArray("seen")

@@ -128,6 +128,12 @@ class AutomationTest {
         return result
     }
 
+    @Test fun disabledExternalRuleStillRequiresItsToken() = isolated {
+        queued { AutomationStore.save(context, state(rule().put("enabled", false))) }
+        assertEquals("rejected", broadcast("rule-test", "b".repeat(64), "paused"))
+        assertEquals("disabled", broadcast("rule-test", "a".repeat(64), "paused"))
+    }
+
     @Test fun actualExternalReceiverAuthenticatesDeduplicatesAndUsesCurrentDevice() = isolated {
         DatagramSocket(0, InetAddress.getByName("127.0.0.1")).use { socket ->
             socket.soTimeout = 1000
@@ -147,7 +153,7 @@ class AutomationTest {
             }
             assertEquals("rejected", broadcast("rule-test", "a".repeat(64), "event-2"))
             queued { DeviceStorageAccess.store(context).save("[]"); AutomationStore.reconcile(context) }
-            assertEquals("disabled", broadcast("rule-test", "c".repeat(64), "event-3"))
+            assertEquals("rejected", broadcast("rule-test", "c".repeat(64), "event-3"))
             fails { socket.receive(packet) }
             val history = queued { AutomationStore.load(context).getJSONArray("history").toString() }
             assertFalse(history.contains("private")); assertFalse(history.contains("aaaa"))
