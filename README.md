@@ -11,7 +11,7 @@ This fork uses its own signing key. If Android refuses an update over another di
 ## Use
 
 1. Enable Wake-on-LAN in your PC firmware and network adapter settings.
-2. Tap the floating **+** at the bottom right of **Device List**, enter the adapter MAC address and preferably your LAN broadcast destination, e.g. `192.168.1.255` on a `/24` network. An empty destination uses `255.255.255.255` (local broadcast); UDP port defaults to `9`. The optional WOL password is not your computer login password.
+2. Tap the floating **+** at the bottom right of **Device List**, enter the adapter MAC address and preferably your LAN broadcast destination, e.g. `192.168.1.255` on a `/24` network. An empty destination uses `255.255.255.255` (local broadcast); UDP port defaults to `9`. The optional WOL password is appended as raw UTF-8 bytes (up to 1,024 bytes). Hexadecimal text is sent literally.
 3. Open **Device List** and tap **Wake**. A brief toast indicates packet submission; it does not confirm that the PC started. Use a trusted LAN or VPN; Wake-on-LAN packets are not encrypted.
 
 - **Widget:** select **More → Add widget**, or add it from the Android launcher. Each widget can use a different saved PC.
@@ -22,7 +22,9 @@ This fork uses its own signing key. If Android refuses an update over another di
 - **Scan Hosts:** detect the current Wi-Fi subnet or enter an IPv4 address or `/22`–`/32` subnet you are authorized to test. Scans are cancellable and limited to 1,024 addresses / 30 seconds, retaining partial results. See the [network features guide](docs/network-features.it.md) for Wi-Fi automations and diagnostics.
 - **Appearance:** switch between light and dark mode in the menu.
 
-Saved devices and WOL passwords are encrypted with Android Keystore. No accounts, ads, or cloud service are required. iOS is an upstream scaffold; these protected features are Android-only.
+Give each new MacroDroid event a fresh `event_id`. Reuse it only when retrying the same event. The app remembers the last 1,000 event identities without a time-based expiry.
+
+Saved devices and WOL passwords are encrypted with Android Keystore. No accounts, ads, or cloud service are required. See the [privacy notice](PRIVACY.md). iOS is an upstream scaffold; these protected features are Android-only.
 
 ## Build and test
 

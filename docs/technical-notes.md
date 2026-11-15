@@ -8,12 +8,12 @@ Maintained by [lucabnt](https://github.com/lucabnt/AwakeOnLANMobile). Based on [
 
 - Send Wake-on-LAN magic packets to IPv4 or IPv6 destinations, with configurable UDP port and optional WOL password.
 - Add, edit, and delete saved devices. Android device records, including passwords, are encrypted at rest.
-- Open directly to saved devices. Tabs are ordered **Device List**, **Add Device**, and **Scan Hosts**; adding a device remains available from the second tab, including when no devices have been saved yet.
+- Open directly to saved devices. Tabs are ordered **Device List**, **Automation**, and **Scan Hosts**. Tap **+** on Device List to add a device.
 - Android home-screen widget: choose one saved PC per widget and send its wake packet without opening the app.
 - Request a widget directly from a saved device, check its TCP reachability on demand, and select a PC for the Android Quick Settings tile.
 - Export and import password-encrypted device backups on Android 8 or newer, without copying a phone's Keystore key.
-- Scan a single IPv4 address or subnet from `/24` to `/32`, using ICMP ping or a TCP connection to port 443.
-- Cancel an active scan. Each scan is limited to 256 addresses and 30 seconds; only one native scan runs at a time.
+- Scan a single IPv4 address or subnet from `/22` to `/32`, using ICMP ping or a TCP connection to port 443.
+- Cancel an active scan. Each scan is limited to 1,024 addresses and 30 seconds; only one native scan runs at a time.
 - Light and dark themes. No advertisements, accounts, or cloud storage.
 
 The application uses React Native / TypeScript with C++ TurboModules for networking and a Kotlin module for Android encrypted storage. The iOS directory is an upstream scaffold: protected storage is implemented for Android only. Other platforms fail explicitly instead of saving device data in plaintext.
@@ -35,7 +35,7 @@ Passwords are masked in the form and excluded from device details and send confi
 ### Native networking
 
 - MAC addresses must contain exactly six hexadecimal bytes, compact or separated consistently by `:` or `-`. Parsing does not mutate the caller's string.
-- Ports must be entirely decimal and in `1–65535`. CIDR prefixes must be entirely decimal and in `24–32`; oversized numbers cannot escape the scan thread as uncaught conversion exceptions.
+- Ports must be entirely decimal and in `1–65535`. CIDR prefixes must be entirely decimal and in `22–32`; oversized numbers cannot escape the scan thread as uncaught conversion exceptions.
 - Socket descriptors have a single owner and close automatically, including during exceptions. Failed sends cannot double-close a descriptor that another operation has reused.
 - Native send errors are surfaced to JavaScript. Failed sends no longer show a success confirmation.
 - TCP probes use nonblocking sockets and short polling intervals. A timeout alone is not treated as evidence that a host is online.
