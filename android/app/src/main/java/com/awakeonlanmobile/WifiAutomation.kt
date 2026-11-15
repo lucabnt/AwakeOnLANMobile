@@ -11,6 +11,8 @@ import android.net.wifi.WifiManager
 import android.os.Build
 
 /** System-owned PendingIntent also delivers new Wi-Fi networks when the UI is closed. */
+internal data class WifiConnection(val ssid: String, val key: String)
+
 internal object WifiAutomation {
     private var started = false
     @Synchronized fun start(context: Context) {
@@ -50,12 +52,12 @@ internal object WifiAutomation {
     }
 
     fun connected(context: Context) {
-        val ssid = ssid(context) ?: return
+        val connection = WifiConnection(ssid(context) ?: return, connectionKey(context))
         val rules = AutomationStore.load(context).getJSONArray("rules")
         repeat(rules.length()) {
             val rule = rules.getJSONObject(it)
-            if (rule.optString("trigger") == "wifi" && rule.optString("wifiSsid") == ssid)
-                AutomationEngine.execute(context, rule.getString("id"), "wifi:${connectionKey(context)}", wifi = true)
+            if (rule.optString("trigger") == "wifi" && rule.optString("wifiSsid") == connection.ssid)
+                AutomationEngine.execute(context, rule.getString("id"), "wifi:${connection.key}", wifi = connection)
         }
     }
 }

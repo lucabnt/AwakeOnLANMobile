@@ -2,6 +2,7 @@ import React from 'react';
 import { Alert, Button, Text, Platform } from 'react-native';
 import Renderer, { act } from 'react-test-renderer';
 import { ScanHostsScreen } from '../src/screens/ScanHostsScreen';
+import { DeviceForm } from '../src/components/DeviceForm';
 import { DeviceToolsModal } from '../src/components/DeviceToolsModal';
 import { AddDeviceScreen } from '../src/screens/AddDeviceScreen';
 import { CustomButton } from '../src/components/CustomButton';
@@ -15,6 +16,7 @@ const mockDevice = {
   ipAddr: '192.168.1.255',
   statusIp: '192.168.1.2',
 };
+jest.mock('@react-navigation/native', () => ({ useFocusEffect: jest.fn() }));
 jest.mock('../src/contexts/DeviceContext', () => ({
   useDeviceContext: () => ({ devices: [mockDevice], updateDevice: mockUpdate }),
 }));
@@ -35,6 +37,8 @@ jest.mock('../src/services/deviceActions', () => ({
 jest.mock('../specs/NativeModule', () => ({
   __esModule: true,
   default: {
+    ValidMac: () => true,
+    ValidIp: () => true,
     ScanHosts: jest.fn(),
     ScanProgress: jest.fn(),
     CancelScan: jest.fn(),
@@ -235,4 +239,29 @@ test('a delayed progress response cannot replace the final diagnostic report', a
     if (tree) await act(async () => tree.unmount());
     jest.useRealTimers();
   }
+});
+
+test('devices created in the same millisecond receive different ids', async () => {
+  const submit = jest.fn().mockResolvedValue(undefined);
+  jest.spyOn(Date, 'now').mockReturnValue(1000);
+  let tree!: Renderer.ReactTestRenderer;
+  await act(async () => {
+    tree = Renderer.create(<DeviceForm onSubmit={submit} />);
+  });
+  for (let i = 0; i < 2; i++) {
+    act(() =>
+      tree.root
+        .findByProps({ placeholder: 'Enter MAC Address' })
+        .props.onChangeText('001122334455'),
+    );
+    await act(async () => {
+      await tree.root
+        .findAllByType(CustomButton)
+        .find(button => button.props.title === 'Save')!
+        .props.onPress();
+    });
+  }
+  expect(submit).toHaveBeenCalledTimes(2);
+  expect(submit.mock.calls[0][0].id).not.toBe(submit.mock.calls[1][0].id);
+  await act(async () => tree.unmount());
 });

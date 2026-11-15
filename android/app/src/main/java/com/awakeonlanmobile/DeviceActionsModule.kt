@@ -39,6 +39,11 @@ class DeviceActionsModule(private val context: ReactApplicationContext) : ReactC
         }
     }
 
+    @ReactMethod fun wake(id: String, promise: Promise) = withDevice(id, promise) { device ->
+        device.wake(context)
+        promise.resolve(null)
+    }
+
     @ReactMethod fun pinWidget(id: String, promise: Promise) = withDevice(id, promise) {
         onActivity(promise) { activity -> promise.resolve(WidgetPinReceiver.request(activity, id)) }
     }
@@ -124,9 +129,9 @@ class DeviceActionsModule(private val context: ReactApplicationContext) : ReactC
     private fun device(id: String) = WidgetDevice.parseArchive(DeviceStorageAccess.store(context).load())
         .first { it.id == id }
 
-    private fun withDevice(id: String, promise: Promise, work: () -> Unit) {
+    private fun withDevice(id: String, promise: Promise, work: (WidgetDevice) -> Unit) {
         DeviceStorageAccess.executor.execute {
-            try { device(id); work() } catch (_: Exception) { reject(promise) }
+            try { work(device(id)) } catch (_: Exception) { reject(promise) }
         }
     }
 

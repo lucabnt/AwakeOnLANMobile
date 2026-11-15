@@ -70,6 +70,9 @@ class AutomationTest {
             assertTrue(AutomationRule.allowed(filter, date("2026-11-03 02:00")))
             assertFalse(AutomationRule.allowed(filter, date("2026-11-03 06:00")))
             assertFalse(AutomationRule.allowed(filter, date("2026-11-03 23:00")))
+            assertEquals(date("2026-11-09 22:00"), AutomationRule.nextWindow(filter, date("2026-11-03 06:00")))
+            val spring = rule().put("windowStart", 150).put("windowEnd", 240)
+            assertEquals(date("2026-03-29 03:00"), AutomationRule.nextWindow(spring, date("2026-03-29 01:50")))
         } finally { TimeZone.setDefault(original) }
         fails { AutomationRule.validate(rule("weekly").put("days", JSONArray())) }
         fails { AutomationRule.validate(rule("once").put("date", "2026-02-30")) }
@@ -128,6 +131,39 @@ class AutomationTest {
         return result
     }
 
+    @Test fun inAppWakeUsesCurrentArchiveAndRejectsDeletedDevice() = isolated {
+        val module = DeviceActionsModule(com.facebook.react.bridge.BridgeReactContext(context))
+        fun wake(): String {
+            val result = java.util.concurrent.CompletableFuture<String>()
+            val type = com.facebook.react.bridge.Promise::class.java
+            val promise = java.lang.reflect.Proxy.newProxyInstance(type.classLoader, arrayOf(type)) { _, method, _ ->
+                if (method.name == "resolve" || method.name == "reject") result.complete(method.name)
+                null
+            } as com.facebook.react.bridge.Promise
+            module.wake("pc", promise)
+            return result.get(10, TimeUnit.SECONDS)
+        }
+        try {
+            DatagramSocket(0, InetAddress.getByName("127.0.0.1")).use { receiver ->
+                receiver.soTimeout = 1000
+                val json = """[{"id":"pc","macAddr":"001122334455","ipAddr":"127.0.0.1","port":"${receiver.localPort}"}]"""
+                queued { DeviceStorageAccess.store(context).save(json) }
+                assertEquals("resolve", wake())
+                val packet = DatagramPacket(ByteArray(128), 128)
+                receiver.receive(packet)
+                assertArrayEquals(WidgetDevice.parseArchive(json).single().packet(), packet.data.copyOf(packet.length))
+                queued { DeviceStorageAccess.store(context).save("[]") }
+                assertEquals("reject", wake())
+            }
+        } finally { module.invalidate() }
+    }
+
+    @Test fun disabledExternalRuleStillRequiresItsToken() = isolated {
+        queued { AutomationStore.save(context, state(rule().put("enabled", false))) }
+        assertEquals("rejected", broadcast("rule-test", "b".repeat(64), "paused"))
+        assertEquals("disabled", broadcast("rule-test", "a".repeat(64), "paused"))
+    }
+
     @Test fun actualExternalReceiverAuthenticatesDeduplicatesAndUsesCurrentDevice() = isolated {
         DatagramSocket(0, InetAddress.getByName("127.0.0.1")).use { socket ->
             socket.soTimeout = 1000
@@ -147,7 +183,7 @@ class AutomationTest {
             }
             assertEquals("rejected", broadcast("rule-test", "a".repeat(64), "event-2"))
             queued { DeviceStorageAccess.store(context).save("[]"); AutomationStore.reconcile(context) }
-            assertEquals("disabled", broadcast("rule-test", "c".repeat(64), "event-3"))
+            assertEquals("rejected", broadcast("rule-test", "c".repeat(64), "event-3"))
             fails { socket.receive(packet) }
             val history = queued { AutomationStore.load(context).getJSONArray("history").toString() }
             assertFalse(history.contains("private")); assertFalse(history.contains("aaaa"))

@@ -13,7 +13,10 @@ class DeviceStorageModule(context: ReactApplicationContext) : ReactContextBaseJa
     @ReactMethod
     fun load(promise: Promise) = submit(promise) {
         runCatching { AutomationStore.load(reactApplicationContext) }
-        store.load()
+        com.facebook.react.bridge.Arguments.createMap().apply {
+            putString("json", store.load())
+            putBoolean("needsMigration", store.hasLegacyFile())
+        }
     }
 
     @ReactMethod
@@ -32,7 +35,7 @@ class DeviceStorageModule(context: ReactApplicationContext) : ReactContextBaseJa
         null
     }
 
-    private fun submit(promise: Promise, work: () -> String?) {
+    private fun submit(promise: Promise, work: () -> Any?) {
         try {
             DeviceStorageAccess.executor.execute {
                 try {

@@ -45,6 +45,8 @@ internal class ProtectedDeviceStore(
         }
     }
 
+    fun hasLegacyFile() = legacyFile.exists()
+
     @Synchronized
     fun load(): String? {
         // openRead also restores AtomicFile's backup after an interrupted write.

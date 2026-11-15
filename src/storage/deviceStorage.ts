@@ -3,7 +3,7 @@ import NativeModule from '../../specs/NativeModule';
 import { DeviceType } from '../types/device';
 
 interface ProtectedStorage {
-  load(): Promise<string | null>;
+  load(): Promise<{ json: string | null; needsMigration: boolean }>;
   save(json: string): Promise<void>;
 }
 
@@ -97,13 +97,14 @@ export const validateDevices = (value: unknown): DeviceType[] => {
 
 export const loadDevices = async (): Promise<DeviceType[]> => {
   const backend = storage();
-  const json = await backend.load();
+  const { json, needsMigration } = await backend.load();
   if (json === null) {
     return [];
   }
   const devices = validateDevices(JSON.parse(json));
   // This also completes/retries legacy migration. A failed migration blocks edits.
-  await backend.save(JSON.stringify(devices));
+  const normalized = JSON.stringify(devices);
+  if (needsMigration || normalized !== json) await backend.save(normalized);
   return devices;
 };
 

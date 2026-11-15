@@ -8,12 +8,12 @@ Maintained by [lucabnt](https://github.com/lucabnt/AwakeOnLANMobile). Based on [
 
 - Send Wake-on-LAN magic packets to IPv4 or IPv6 destinations, with configurable UDP port and optional WOL password.
 - Add, edit, and delete saved devices. Android device records, including passwords, are encrypted at rest.
-- Open directly to saved devices. Tabs are ordered **Device List**, **Add Device**, and **Scan Hosts**; adding a device remains available from the second tab, including when no devices have been saved yet.
+- Open directly to saved devices. Tabs are ordered **Device List**, **Automation**, and **Scan Hosts**. Tap **+** on Device List to add a device.
 - Android home-screen widget: choose one saved PC per widget and send its wake packet without opening the app.
 - Request a widget directly from a saved device, check its TCP reachability on demand, and select a PC for the Android Quick Settings tile.
 - Export and import password-encrypted device backups on Android 8 or newer, without copying a phone's Keystore key.
-- Scan a single IPv4 address or subnet from `/24` to `/32`, using ICMP ping or a TCP connection to port 443.
-- Cancel an active scan. Each scan is limited to 256 addresses and 30 seconds; only one native scan runs at a time.
+- Scan a single IPv4 address or subnet from `/22` to `/32`, using ICMP ping or a TCP connection to port 443.
+- Cancel an active scan. Each scan is limited to 1,024 addresses and 30 seconds; only one native scan runs at a time.
 - Light and dark themes. No advertisements, accounts, or cloud storage.
 
 The application uses React Native / TypeScript with C++ TurboModules for networking and a Kotlin module for Android encrypted storage. The iOS directory is an upstream scaffold: protected storage is implemented for Android only. Other platforms fail explicitly instead of saving device data in plaintext.
@@ -35,18 +35,18 @@ Passwords are masked in the form and excluded from device details and send confi
 ### Native networking
 
 - MAC addresses must contain exactly six hexadecimal bytes, compact or separated consistently by `:` or `-`. Parsing does not mutate the caller's string.
-- Ports must be entirely decimal and in `1–65535`. CIDR prefixes must be entirely decimal and in `24–32`; oversized numbers cannot escape the scan thread as uncaught conversion exceptions.
+- Ports must be entirely decimal and in `1–65535`. CIDR prefixes must be entirely decimal and in `22–32`; oversized numbers cannot escape the scan thread as uncaught conversion exceptions.
 - Socket descriptors have a single owner and close automatically, including during exceptions. Failed sends cannot double-close a descriptor that another operation has reused.
 - Native send errors are surfaced to JavaScript. Failed sends no longer show a success confirmation.
 - TCP probes use nonblocking sockets and short polling intervals. A timeout alone is not treated as evidence that a host is online.
-- Ping runs with literal arguments and no shell. Cancellation and deadlines terminate and reap its child process. The worker is cancelled and joined when the native module is destroyed.
+- Ping sends ICMP echo requests through a datagram socket. When the kernel denies ping sockets, the scanner invokes the system ping executable with literal arguments. Cancellation and deadlines terminate and reap any fallback child processes. The worker is cancelled and joined when the native module is destroyed.
 - Reverse DNS lookups are omitted so an unbounded name lookup cannot stall cancellation or the scan deadline. Results contain IP addresses; the hostname field is empty.
 
 ### Dependency security
 
 The original npm audit reported 39 affected dependency entries, including 4 critical findings. The updated lockfile audit on **2026-11-01 reports zero known npm vulnerabilities**, including development dependencies. The CLI is updated to the corrected 19.1.2 release while React Native remains at 0.80.0 and the native screen/safe-area libraries retain their verified versions.
 
-Compatible transitive updates are locked, and `fast-xml-parser` is pinned to its corrected 5.11.2 release. Small local adapters expose the patched `minimatch` 11.0.3 and `image-size` 2.0.4 implementations through the CommonJS APIs required by existing tooling. Since no corrected `deepmerge` release is available, a reviewed MIT-licensed local patch prevents prototype poisoning in both input-copying paths. These are actual implementation replacements; advisories are not ignored or filtered. See [dependency compatibility and maintenance notes](../tools/dependencies/README.md) for the code, rationale, upstream references, and removal conditions.
+Compatible transitive updates are locked, and `fast-xml-parser` is pinned to its corrected 5.12.0 release. Small local adapters expose the patched `minimatch` 11.0.3 and `image-size` 2.0.4 implementations through the CommonJS APIs required by existing tooling. Since no corrected `deepmerge` release is available, a reviewed MIT-licensed local patch prevents prototype poisoning in both input-copying paths. These are actual implementation replacements; advisories are not ignored or filtered. See [dependency compatibility and maintenance notes](../tools/dependencies/README.md) for the code, rationale, upstream references, and removal conditions.
 
 CI checks the full npm audit at the low-severity threshold, as well as application and dependency regression tests. A clean audit is a snapshot of the advisory database, not a guarantee that all code or Android/C++ dependencies are vulnerability-free.
 
@@ -141,7 +141,7 @@ npm run lint
 
 JavaScript tests cover archive validation, migration failures, blocked writes after load failures, serialized saves, password exposure in displayed text, and failed-send feedback. Dependency regressions also test prototype-poisoning payloads, glob amplification, malformed image chunks, legacy tool APIs, Metro image handling, and Android manifest parsing.
 
-The standalone native regression suite runs on Linux with a C++20 compiler and uses only loopback networking:
+The standalone native regression suite runs on Linux with a C++20 compiler and uses loopback and the reserved benchmark network 198.18.0.0/15:
 
 ```sh
 c++ -std=c++20 -Wall -Wextra -Werror -fsanitize=address,undefined -pthread \

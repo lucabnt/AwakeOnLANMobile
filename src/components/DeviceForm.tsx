@@ -179,7 +179,9 @@ export const DeviceForm = ({
     setIsSaving(true);
     try {
       await onSubmit({
-        id: initialDevice?.id || Date.now().toString(),
+        id:
+          initialDevice?.id ||
+          `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         name: name.trim() || '',
         macAddr: macAddr.trim(),
         ipAddr: ipAddr.trim() || '',

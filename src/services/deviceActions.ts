@@ -1,6 +1,7 @@
 import { NativeModules, Platform } from 'react-native';
 
 interface DeviceActions {
+  wake(id: string): Promise<void>;
   currentSubnet(): Promise<string>;
   recoverIp(id: string): Promise<string>;
   diagnose(id: string): Promise<string>;

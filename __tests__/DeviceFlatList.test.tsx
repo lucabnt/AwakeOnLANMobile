@@ -2,7 +2,6 @@ import React from 'react';
 import { Alert, Text, Platform, ToastAndroid } from 'react-native';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { DeviceFlatList } from '../src/components/DeviceFlatList';
-import NativeModule from '../specs/NativeModule';
 import { CustomButton } from '../src/components/CustomButton';
 import { deviceActions } from '../src/services/deviceActions';
 
@@ -10,10 +9,6 @@ jest.mock('../src/services/deviceActions', () => ({
   deviceActions: jest.fn(),
 }));
 
-jest.mock('../specs/NativeModule', () => ({
-  __esModule: true,
-  default: { SendWOL: jest.fn() },
-}));
 jest.mock('../src/contexts/DeviceContext', () => ({
   useDeviceContext: () => ({
     devices: [
@@ -51,15 +46,23 @@ test('never displays passwords and shows a toast only after successful sends', a
   const wake = tree.root
     .findAllByType(CustomButton)
     .find(button => button.props.title === 'Wake')!;
-  (NativeModule.SendWOL as jest.Mock).mockImplementationOnce(() => {
-    throw new Error('Network error');
+  const send = jest
+    .fn()
+    .mockRejectedValueOnce(new Error('Network error'))
+    .mockResolvedValue(undefined);
+  (deviceActions as jest.Mock).mockReturnValue({ wake: send });
+  await act(async () => {
+    await wake.props.onPress();
   });
-  act(() => wake.props.onPress());
+  expect(send).toHaveBeenCalledWith('pc');
   expect(alert).toHaveBeenCalledTimes(1);
   expect(alert.mock.calls[0][0]).toBe('Wake On LAN failed');
   expect(toast).not.toHaveBeenCalled();
   alert.mockClear();
-  act(() => wake.props.onPress());
+  await act(async () => {
+    await wake.props.onPress();
+  });
+  expect(send).toHaveBeenCalledWith('pc');
   expect(alert).not.toHaveBeenCalled();
   expect(toast).toHaveBeenCalledWith(
     'Wake packet sent · startup not verified',

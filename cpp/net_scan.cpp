@@ -3,6 +3,8 @@
 #include <csignal>
 #include <fcntl.h>
 #include <poll.h>
+#include <array>
+#include <netinet/ip_icmp.h>
 #include <sys/wait.h>
 #include <thread>
 #include <algorithm>
@@ -99,6 +101,67 @@ bool NetScan::PingCheck(uint32_t ip)
     return false;
 }
 
+// Ping datagram sockets are available to unprivileged apps on most Android kernels.
+// Limit each group to keep replies within the socket buffer and LAN neighbour queues.
+bool NetScan::ScanPingDatagrams(uint32_t start)
+{
+    SocketHandle fd(socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, IPPROTO_ICMP));
+    if (fd.get() < 0) {
+        if (errno == EPERM || errno == EACCES || errno == EPROTONOSUPPORT || errno == EAFNOSUPPORT) return false;
+        throw std::system_error(errno, std::system_category(), "Could not open ping socket.");
+    }
+    const unsigned total = control_->total.load();
+    for (unsigned base = 0; base < total; base += 64) {
+        const unsigned count = std::min(64u, total - base);
+        std::array<bool, 64> pending{};
+        unsigned remaining = 0;
+        for (unsigned i = 0; i < count; ++i) {
+            if (control_->cancelled || std::chrono::steady_clock::now() >= control_->deadline) return true;
+            sockaddr_in dest{};
+            dest.sin_family = AF_INET;
+            dest.sin_addr.s_addr = htonl(start + base + i);
+            icmphdr echo{};
+            echo.type = ICMP_ECHO;
+            echo.un.echo.sequence = htons(base + i);
+            // Linux ping sockets supply the identifier and checksum.
+            ssize_t sent;
+            do { sent = sendto(fd.get(), &echo, sizeof(echo), 0,
+                               reinterpret_cast<sockaddr *>(&dest), sizeof(dest)); }
+            while (sent < 0 && errno == EINTR);
+            if (sent == sizeof(echo)) {
+                pending[i] = true;
+                ++remaining;
+            } else {
+                ++control_->completed;
+            }
+        }
+        auto until = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+        while (remaining && std::chrono::steady_clock::now() < until) {
+            if (control_->cancelled || std::chrono::steady_clock::now() >= control_->deadline) return true;
+            pollfd descriptor{fd.get(), POLLIN, 0};
+            int ready = poll(&descriptor, 1, 20);
+            if (ready < 0 && errno != EINTR) throw std::system_error(errno, std::system_category(), "Ping poll failed.");
+            if (ready <= 0) continue;
+            sockaddr_in source{};
+            socklen_t size = sizeof(source);
+            icmphdr reply{};
+            if (recvfrom(fd.get(), &reply, sizeof(reply), 0, reinterpret_cast<sockaddr *>(&source), &size) != sizeof(reply)) continue;
+            unsigned seq = ntohs(reply.un.echo.sequence);
+            if (reply.type != ICMP_ECHOREPLY || reply.code != 0 || seq < base || seq >= base + count ||
+                !pending[seq - base] || ntohl(source.sin_addr.s_addr) != start + seq) continue;
+            char text[INET_ADDRSTRLEN]{};
+            inet_ntop(AF_INET, &source.sin_addr, text, sizeof(text));
+            std::lock_guard<std::mutex> lock(control_->mutex);
+            control_->hosts.push_back({text, ""});
+            pending[seq - base] = false;
+            --remaining;
+            ++control_->completed;
+        }
+        control_->completed += remaining;
+    }
+    return true;
+}
+
 bool NetScan::ConnectCheck(uint32_t ip)
 {
     control_->Check();
@@ -181,7 +244,9 @@ std::vector<std::vector<std::string>> NetScan::DetermineAndRunOperation(const st
         }
     };
     try {
-        for (unsigned i = 0; i < std::min(16u, control_->total.load()); ++i) workers.emplace_back(work);
+        if (mode != Mode::PING || !ScanPingDatagrams(start)) {
+            for (unsigned i = 0; i < std::min(16u, control_->total.load()); ++i) workers.emplace_back(work);
+        }
     } catch (...) {
         control_->cancelled = true;
         for (auto &worker : workers) worker.join();

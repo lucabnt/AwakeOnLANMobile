@@ -24,8 +24,8 @@ internal class WidgetDevice(
         password.copyInto(bytes, 102)
     }
 
-    fun wake() {
-        DeviceNetwork.wake(packet(), address, port)
+    fun wake(context: android.content.Context) {
+        DeviceNetwork.wake(context, packet(), address, port)
     }
 
     fun reachable(timeout: Int = 1500): Boolean = DeviceNetwork.reachable(statusAddress, statusPort, statusMethod, timeout)

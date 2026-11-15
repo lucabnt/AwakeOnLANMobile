@@ -282,9 +282,9 @@ export const ScanHostsScreen = () => {
           buttonTextStyle={styles.subnetButtonText}
         />
         <Text style={styles.text}>
-          Maximum 1,024 addresses, 16 parallel probes and 30 seconds.
-          Interrupted scans keep partial results. MAC addresses must be entered
-          manually.
+          Maximum 1,024 addresses and 30 seconds. TCP checks port 443. Hosts
+          that silently drop probes may be missed. Interrupted scans keep
+          partial results. MAC addresses must be entered manually.
         </Text>
         <Text style={styles.text} accessibilityLiveRegion="polite">
           {progress}

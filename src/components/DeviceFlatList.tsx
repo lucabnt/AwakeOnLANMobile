@@ -12,7 +12,6 @@ import {
 import { useDeviceContext } from '../contexts/DeviceContext';
 import { CustomButton } from './CustomButton';
 import { useDeviceFlatListStyles } from '../styles/flatList';
-import NativeModule from '../../specs/NativeModule';
 import { DeviceType } from '../types/device';
 import { deviceActions } from '../services/deviceActions';
 import { useDeviceStatus } from '../services/useDeviceStatus';
@@ -103,14 +102,9 @@ export const DeviceFlatList = ({
     );
   };
 
-  const wakeButton = (item: DeviceType) => {
+  const wakeButton = async (item: DeviceType) => {
     try {
-      NativeModule.SendWOL(
-        item.macAddr,
-        item.ipAddr || '',
-        item.port || '',
-        item.passwd || '',
-      );
+      await deviceActions().wake(item.id);
     } catch {
       Alert.alert(
         'Wake On LAN failed',

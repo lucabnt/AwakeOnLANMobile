@@ -37,6 +37,24 @@ class AutomationAlarmReceiver : AutomationReceiver() {
     override fun handle(context: Context, intent: Intent): String? {
         val id = intent.getStringExtra("id") ?: return null
         val at = intent.getLongExtra("at", -1)
+        val state = AutomationStore.load(context)
+        val rules = state.getJSONArray("rules")
+        val rule = (0 until rules.length()).map { rules.getJSONObject(it) }.firstOrNull { it.getString("id") == id }
+        if (rule?.optString("trigger") == "wifi") {
+            if (!rule.has("wifiRetryAt") || rule.getLong("wifiRetryAt") != at) return null
+            val key = WifiAutomation.connectionKey(context)
+            val ssid = WifiAutomation.ssid(context)
+            if (ssid == null || rule.optString("waitingConnection") != key || ssid != rule.optString("wifiSsid")) {
+                rule.remove("wifiRetryAt")
+                rule.remove("waitingConnection")
+                AutomationStore.save(context, state)
+                return null
+            }
+            // Consume this delivery even when another rule already handled the same event.
+            rule.remove("wifiRetryAt")
+            AutomationStore.save(context, state)
+            return AutomationEngine.execute(context, id, "wifi:$key", wifi = WifiConnection(ssid, key))
+        }
         return AutomationEngine.execute(context, id, "alarm:$id:$at", at)
     }
 }
@@ -57,7 +75,14 @@ class AutomationSystemReceiver : AutomationReceiver() {
         val state = AutomationStore.load(context)
         if (intent.action in listOf(Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED)) {
             val rules = state.getJSONArray("rules")
-            repeat(rules.length()) { rules.getJSONObject(it).remove("nextAt") }
+            repeat(rules.length()) {
+                val rule = rules.getJSONObject(it)
+                rule.remove("nextAt")
+                if (rule.has("wifiRetryAt")) {
+                    val cooldownEnd = rule.optLong("lastAttempt") + rule.getInt("cooldownSeconds") * 1000L
+                    rule.put("wifiRetryAt", AutomationRule.nextWindow(rule, maxOf(System.currentTimeMillis(), cooldownEnd)))
+                }
+            }
         }
         AutomationScheduler.sync(context, state)
         return null

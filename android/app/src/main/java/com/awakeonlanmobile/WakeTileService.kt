@@ -40,7 +40,7 @@ class WakeTileService : TileService() {
             val status = try {
                 check(!getSystemService(android.app.KeyguardManager::class.java).isDeviceLocked)
                 val device = target(this)
-                if (device == null) R.string.tile_missing else { device.wake(); R.string.widget_sent }
+                if (device == null) R.string.tile_missing else { device.wake(this); R.string.widget_sent }
             } catch (_: Exception) { R.string.widget_error }
             finally { sending.set(false) }
             Handler(Looper.getMainLooper()).post {
