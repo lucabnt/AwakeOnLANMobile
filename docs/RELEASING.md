@@ -2,28 +2,30 @@
 
 The maintained branch and default branch of **lucabnt/AwakeOnLANMobile** is `main`. This is the fork; the upstream repository is nellogan/AwakeOnLANMobile. The existing `master` branch is preserved. No pull request to upstream is needed to publish this fork.
 
-## Current candidate: 1.2.0-rc.3
+## Current candidate: 1.2.0-rc.4
 
-The working version is `1.2.0-rc.3` (base versionCode `100202`; ABI codes
-`10020201`-`10020204`). The published RC1 and RC2 releases are immutable.
-This candidate refines the Scan Hosts Wi-Fi subnet control.
+The working version is `1.2.0-rc.4` (base versionCode `100203`; ABI codes
+`10020301`-`10020304`). The published RC1, RC2 and RC3 releases are immutable.
+This candidate unifies the wake sender, retries Wi-Fi rules when their window
+opens and speeds up Ping scans.
 
-See [RC3 notes](releases/v1.2.0-rc.3.md) and the
-[step-by-step APK preparation guide](releases/v1.2.0-rc.3-apk-preparation.it.md).
+See [RC4 notes](releases/v1.2.0-rc.4.md). The
+[RC3 APK preparation guide](releases/v1.2.0-rc.3-apk-preparation.it.md) applies
+with `rc.4` and the codes above.
 The GitHub release is a **draft** until signed artifacts and checks are ready.
 
 1. Build the draft's target commit using JDK 17 and Android Studio's signed APK
-   wizard, reusing the maintainer certificate from RC2.
+   wizard, reusing the maintainer certificate from RC3.
 2. Verify all four APK signatures, embedded version/codes and 16 KiB alignment.
-3. Stage verified signed files as `awakeonlanmobile-<abi>-1.2.0-rc.3.apk` in
-   `release-artifacts/1.2.0-rc.3/signed/`, then generate `SHA256SUMS.txt`.
-4. Test updating RC2 without uninstalling and check the subnet action in both
-   themes. Upload the four signed APKs and checksums to the existing RC3 draft.
+3. Stage verified signed files as `awakeonlanmobile-<abi>-1.2.0-rc.4.apk` in
+   `release-artifacts/1.2.0-rc.4/signed/`, then generate `SHA256SUMS.txt`.
+4. Test updating RC3 without uninstalling, then run the wake routing checks in
+   the RC4 notes. Upload the four signed APKs and checksums to the RC4 draft.
 5. Publish only when ready, as a prerelease, keeping stable/latest unchanged.
 
-Do not rename RC2 binaries as RC3 or overwrite existing release assets. Hardware
+Do not rename RC3 binaries as RC4 or overwrite existing release assets. Hardware
 validation limits from RC2 still apply. A subsequent distributed build needs base
-versionCode `100203` or higher. Never replace an existing version tag.
+versionCode `100204` or higher. Never replace an existing version tag.
 
 ## Historical release: 1.1.0
 

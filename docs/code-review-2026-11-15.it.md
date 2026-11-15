@@ -309,7 +309,7 @@ Nota su QW7: il modulo nativo non espone se il contenuto proviene dal file legac
 | `:app:compileDebugKotlin` + `:app:compileDebugAndroidTestKotlin` | OK (JDK Temurin 17, come in CI) |
 | `:app:connectedDebugAndroidTest` su emulatore Pixel 9 API 35 | 1ª esecuzione: 30/32 passati, 1 fallito (`BackupFlowTest`, attesa del selettore file), 1 saltato. 2ª esecuzione: **31/32 passati, 0 falliti**, 1 saltato (`MacroDroidAcceptanceTest`, richiede MacroDroid reale). `BackupFlowTest` passa anche da solo e né il test né `DeviceBackupActivity` sono stati modificati: è un test instabile preesistente, non una regressione |
 | Test C++ (`cpp/tests/security_tests.cpp`, ASan/UBSan) | **Non eseguiti**: richiedono Linux/clang, nessuna distribuzione WSL disponibile. Saranno eseguiti dalla CI |
-| Comportamento multi-rete dell'invio WOL (D4) | **Non verificato su hardware**: checklist nelle note di rilascio `docs/releases/v1.2.0-rc.3.md` |
+| Comportamento multi-rete dell'invio WOL (D4) | **Non verificato su hardware**: checklist nelle note di rilascio `docs/releases/v1.2.0-rc.4.md` |
 
 Nota ambiente: il JDK incluso in Android Studio è la versione 25, non supportata da Gradle 8.14; per le build locali serve un JDK 17 (o 21).
 
