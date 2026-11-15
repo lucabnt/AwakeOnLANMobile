@@ -94,17 +94,38 @@ internal object AutomationRule {
     }
 
     fun allowed(rule: JSONObject, now: Long): Boolean {
-        val start = rule.optInt("windowStart", -1)
-        val cal = Calendar.getInstance().apply { timeInMillis = now }
-        val minute = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-        val end = rule.optInt("windowEnd", -1)
-        // An overnight interval belongs to the day on which it starts.
-        if (start > end && end >= 0 && minute < end) cal.add(Calendar.DAY_OF_MONTH, -1)
-        val day = (cal.get(Calendar.DAY_OF_WEEK) + 5) % 7 + 1
-        val days = rule.optJSONArray("windowDays") ?: JSONArray()
-        if (days.length() > 0 && !(0 until days.length()).any { days.getInt(it) == day }) return false
+        val days = rule.optJSONArray("windowDays")
+        val allowedDays = days?.let { (0 until it.length()).map(it::getInt).toSet() }.orEmpty()
+        val calendar = Calendar.getInstance().apply { timeInMillis = now }
+        return allowed(calendar, rule.optInt("windowStart", -1), rule.optInt("windowEnd", -1), allowedDays)
+    }
+
+    private fun allowed(calendar: Calendar, start: Int, end: Int, days: Set<Int>): Boolean {
+        val minute = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+        var day = (calendar.get(Calendar.DAY_OF_WEEK) + 5) % 7 + 1
+        if (start > end && end >= 0 && minute < end) day = (day + 5) % 7 + 1
+        if (days.isNotEmpty() && day !in days) return false
         if (start < 0) return true
         return if (start < end) minute in start until end else minute >= start || minute < end
+    }
+
+    /** Earliest allowed instant after a cooldown, including overnight and day-only windows. */
+    fun nextWindow(rule: JSONObject, earliest: Long): Long {
+        if (allowed(rule, earliest)) return earliest
+        val minuteMs = 60_000L
+        var next = earliest - earliest % minuteMs + minuteMs
+        val calendar = Calendar.getInstance()
+        val start = rule.optInt("windowStart", -1)
+        val end = rule.optInt("windowEnd", -1)
+        val days = rule.optJSONArray("windowDays")
+        val allowedDays = days?.let { (0 until it.length()).map(it::getInt).toSet() }.orEmpty()
+        // A weekly interval can disappear entirely during a spring DST transition.
+        repeat(15 * 24 * 60) {
+            calendar.timeInMillis = next
+            if (allowed(calendar, start, end, allowedDays)) return next
+            next += minuteMs
+        }
+        error("No upcoming Wi-Fi window")
     }
 
     fun occurrence(rule: JSONObject, at: Long): String {

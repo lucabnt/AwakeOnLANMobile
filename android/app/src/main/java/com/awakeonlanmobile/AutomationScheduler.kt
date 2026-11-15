@@ -28,7 +28,23 @@ internal object AutomationScheduler {
             val id = rule.getString("id")
             cancel(context, id)
             rule.remove("suspended")
-            if (!state.getBoolean("enabled") || !rule.getBoolean("enabled")) return@repeat
+            if (!state.getBoolean("enabled") || !rule.getBoolean("enabled")) {
+                rule.remove("wifiRetryAt")
+                rule.remove("waitingConnection")
+                return@repeat
+            }
+            if (rule.getString("trigger") == "wifi" && rule.has("wifiRetryAt")) {
+                val retry = rule.getLong("wifiRetryAt")
+                val intent = pending(context, id, retry)
+                if (exactAllowed(context)) {
+                    try {
+                        alarm.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, retry, intent)
+                        return@repeat
+                    } catch (_: SecurityException) { /* Access may have changed. */ }
+                }
+                alarm.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, retry, intent)
+                return@repeat
+            }
             if (rule.getString("trigger") in listOf("external", "wifi")) return@repeat
             if (rule.getString("precision") == "exact" && !exactAllowed(context)) {
                 rule.put("suspended", "Exact alarm access required")

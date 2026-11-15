@@ -70,6 +70,9 @@ class AutomationTest {
             assertTrue(AutomationRule.allowed(filter, date("2026-11-03 02:00")))
             assertFalse(AutomationRule.allowed(filter, date("2026-11-03 06:00")))
             assertFalse(AutomationRule.allowed(filter, date("2026-11-03 23:00")))
+            assertEquals(date("2026-11-09 22:00"), AutomationRule.nextWindow(filter, date("2026-11-03 06:00")))
+            val spring = rule().put("windowStart", 150).put("windowEnd", 240)
+            assertEquals(date("2026-03-29 03:00"), AutomationRule.nextWindow(spring, date("2026-03-29 01:50")))
         } finally { TimeZone.setDefault(original) }
         fails { AutomationRule.validate(rule("weekly").put("days", JSONArray())) }
         fails { AutomationRule.validate(rule("once").put("date", "2026-02-30")) }

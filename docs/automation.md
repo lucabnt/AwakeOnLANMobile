@@ -83,3 +83,5 @@ The row contains a fixed, one-line text indicator and **Status** opens details o
 - [MacroDroid: Send Intent](https://macrodroidforum.com/wiki/index.php/Action%3A_Send_Intent)
 
 See the [validation record](automation-validation.it.md) before treating this candidate as a stable release.
+
+A Wi-Fi connection first seen outside its allowed window is checked again by an Android alarm at the next opening. The phone must still be on the same connection. Without exact-alarm access Android can delay delivery. Repeated network callbacks while waiting create a single history entry for the same reason.

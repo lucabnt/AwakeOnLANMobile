@@ -90,29 +90,64 @@ class NetworkFeaturesTest {
         DatagramSocket(0, InetAddress.getByName("127.0.0.1")).use { receiver ->
             receiver.soTimeout = 500
             try {
-                queued {
+                val at = queued {
                     DeviceStorageAccess.store(context).save(JSONArray().put(JSONObject().put("id", "network-feature-pc")
                         .put("macAddr", "001122334455").put("ipAddr", "127.0.0.1").put("port", receiver.localPort.toString())).toString())
                     AutomationStore.save(context, JSONObject().put("version", 1).put("enabled", true)
                         .put("rules", JSONArray().put(rule().put("wifiSsid", ssid))).put("history", JSONArray()).put("seen", JSONArray()))
-                    assertEquals("sent", AutomationEngine.execute(context, "wifi-feature-test", "wifi:one", wifi = true))
-                    assertEquals("duplicate", AutomationEngine.execute(context, "wifi-feature-test", "wifi:two", wifi = true))
+                    val wifi = WifiConnection(ssid, WifiAutomation.connectionKey(context))
+                    val paused = AutomationStore.load(context)
+                    val waiting = paused.getJSONArray("rules").getJSONObject(0)
+                    val now = java.util.Calendar.getInstance()
+                    val minute = now.get(java.util.Calendar.HOUR_OF_DAY) * 60 + now.get(java.util.Calendar.MINUTE)
+                    waiting.put("windowStart", (minute + 5) % 1440).put("windowEnd", (minute + 10) % 1440)
+                    AutomationStore.save(context, paused)
+                    repeat(2) {
+                        assertEquals("skipped: outside time window", AutomationEngine.execute(context, "wifi-feature-test", "wifi:one", wifi = wifi))
+                    }
+                    val deferred = AutomationStore.load(context)
+                    assertEquals(1, deferred.getJSONArray("history").length())
+                    val retry = deferred.getJSONArray("rules").getJSONObject(0)
+                    assertTrue(retry.getLong("wifiRetryAt") > System.currentTimeMillis())
+                    assertFalse(retry.has("lastAttempt"))
+                    val due = System.currentTimeMillis()
+                    retry.put("windowStart", -1).put("windowEnd", -1).put("wifiRetryAt", due)
+                    AutomationStore.save(context, deferred)
+                    due
+                }
+                context.sendBroadcast(android.content.Intent(context, AutomationAlarmReceiver::class.java)
+                    .putExtra("id", "wifi-feature-test").putExtra("at", at))
+                receiver.soTimeout = 5000
+                receiver.receive(DatagramPacket(ByteArray(128), 128))
+                queued {
+                    val wifi = WifiConnection(ssid, WifiAutomation.connectionKey(context))
+                    val delivered = AutomationStore.load(context).getJSONArray("rules").getJSONObject(0)
+                    assertFalse(delivered.has("wifiRetryAt"))
+                    assertEquals("sent", delivered.getString("lastResult"))
+                    assertEquals("duplicate", AutomationEngine.execute(context, "wifi-feature-test", "wifi:two", wifi = wifi))
                     val state = AutomationStore.load(context)
                     val current = state.getJSONArray("rules").getJSONObject(0)
                     current.put("lastWifiAttempt", 0).put("lastAttempt", 0)
                     AutomationStore.save(context, state)
                     // A late capabilities event on the same connection is still a duplicate.
-                    assertEquals("duplicate", AutomationEngine.execute(context, "wifi-feature-test", "wifi:three", wifi = true))
+                    assertEquals("duplicate", AutomationEngine.execute(context, "wifi-feature-test", "wifi:three", wifi = wifi))
                     current.put("lastWifiConnection", "old-network").put("lastWifiAttempt", System.currentTimeMillis())
                     AutomationStore.save(context, state)
-                    assertEquals("duplicate", AutomationEngine.execute(context, "wifi-feature-test", "wifi:reconnect", wifi = true))
+                    assertEquals("duplicate", AutomationEngine.execute(context, "wifi-feature-test", "wifi:reconnect", wifi = wifi))
+                    val prior = System.currentTimeMillis() - 360_000L
+                    current.put("lastWifiAttempt", prior).put("lastAttempt", prior).put("cooldownSeconds", 600)
+                    AutomationStore.save(context, state)
+                    assertEquals("skipped: cooldown", AutomationEngine.execute(context, "wifi-feature-test", "wifi:cooldown", wifi = wifi))
+                    val cooldown = AutomationStore.load(context).getJSONArray("rules").getJSONObject(0)
+                    assertEquals(prior + 600_000L, cooldown.getLong("wifiRetryAt"))
                     current.put("lastWifiAttempt", 0).put("ssidCondition", ssid + "-different")
                     AutomationStore.save(context, state)
-                    assertEquals("skipped: Wi-Fi condition", AutomationEngine.execute(context, "wifi-feature-test", "wifi:condition", wifi = true))
+                    assertEquals("skipped: Wi-Fi condition", AutomationEngine.execute(context, "wifi-feature-test", "wifi:condition", wifi = wifi))
                 }
-                receiver.receive(DatagramPacket(ByteArray(128), 128))
+                receiver.soTimeout = 500
                 assertTrue(runCatching { receiver.receive(DatagramPacket(ByteArray(128), 128)) }.isFailure)
             } finally { queued {
+                AutomationScheduler.cancel(context, "wifi-feature-test")
                 DeviceStorageAccess.store(context).save(savedDevices ?: "[]")
                 AutomationStore.save(context, JSONObject(savedAutomation))
                 AutomationScheduler.sync(context, JSONObject(savedAutomation))
