@@ -8,7 +8,7 @@ These reviewed local packages replace vulnerable transitive implementations whil
 | `@awakeonlan/image-size-compat` | `image-size` 2.0.4, installed as `image-size-modern` | Metro passes both image buffers and filenames to a callable CommonJS export. The adapter reads at most 512 KiB from a filename, closes the descriptor in `finally`, and forwards the bytes to v2's patched parsers. It supports Metro's synchronous APIs, not the removed v1 callback/queue APIs. |
 | `@awakeonlan/deepmerge-hardened` | Reviewed local patch of the MIT-licensed `deepmerge` 4.3.1 bundled source | No corrected upstream release exists for GHSA-gcqx-w48m-w2h4. All writes to the merge result now use own data properties, including the target-cloning path, so `__proto__` cannot invoke an inherited setter or change the result's prototype. Array/custom merge, symbol, and clone semantics are retained. The original license is included. |
 
-`fast-xml-parser` is overridden to 5.11.2. CLI 19 uses its `XMLParser` API; the Android manifest parsing regression test and actual CLI configuration/build checks cover this usage. The three direct React Native CLI packages are pinned to 19.1.2, the corrected version in the series supported by React Native 0.80.
+`fast-xml-parser` is overridden to 5.12.0. CLI 19 uses its `XMLParser` API; the Android manifest parsing regression test and actual CLI configuration/build checks cover this usage. The three direct React Native CLI packages are pinned to 19.1.2, the corrected version in the series supported by React Native 0.80.
 
 Relevant upstream advisories and compatibility information:
 
