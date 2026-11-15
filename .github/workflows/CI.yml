@@ -53,7 +53,7 @@ jobs:
       - name: Build
         run: |
           npx react-native build-android --mode=debug # this step is needed for code generation of the C++ turbo module 
-          cd android && ./gradlew assembleDebug
+          cd android && ./gradlew assembleDebug :app:assembleDebugAndroidTest
 
       - name: Native security regression tests
         run: |
