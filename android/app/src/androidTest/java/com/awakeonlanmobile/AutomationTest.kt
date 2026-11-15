@@ -131,6 +131,33 @@ class AutomationTest {
         return result
     }
 
+    @Test fun inAppWakeUsesCurrentArchiveAndRejectsDeletedDevice() = isolated {
+        val module = DeviceActionsModule(com.facebook.react.bridge.BridgeReactContext(context))
+        fun wake(): String {
+            val result = java.util.concurrent.CompletableFuture<String>()
+            val type = com.facebook.react.bridge.Promise::class.java
+            val promise = java.lang.reflect.Proxy.newProxyInstance(type.classLoader, arrayOf(type)) { _, method, _ ->
+                if (method.name == "resolve" || method.name == "reject") result.complete(method.name)
+                null
+            } as com.facebook.react.bridge.Promise
+            module.wake("pc", promise)
+            return result.get(10, TimeUnit.SECONDS)
+        }
+        try {
+            DatagramSocket(0, InetAddress.getByName("127.0.0.1")).use { receiver ->
+                receiver.soTimeout = 1000
+                val json = """[{"id":"pc","macAddr":"001122334455","ipAddr":"127.0.0.1","port":"${receiver.localPort}"}]"""
+                queued { DeviceStorageAccess.store(context).save(json) }
+                assertEquals("resolve", wake())
+                val packet = DatagramPacket(ByteArray(128), 128)
+                receiver.receive(packet)
+                assertArrayEquals(WidgetDevice.parseArchive(json).single().packet(), packet.data.copyOf(packet.length))
+                queued { DeviceStorageAccess.store(context).save("[]") }
+                assertEquals("reject", wake())
+            }
+        } finally { module.invalidate() }
+    }
+
     @Test fun disabledExternalRuleStillRequiresItsToken() = isolated {
         queued { AutomationStore.save(context, state(rule().put("enabled", false))) }
         assertEquals("rejected", broadcast("rule-test", "b".repeat(64), "paused"))

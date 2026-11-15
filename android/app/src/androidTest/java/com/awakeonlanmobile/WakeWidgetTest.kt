@@ -38,7 +38,7 @@ class WakeWidgetTest {
         DatagramSocket(0, InetAddress.getByName("127.0.0.1")).use { listener ->
             listener.soTimeout = 3000
             val device = WidgetDevice.parseArchive(json(port = listener.localPort)).single()
-            device.wake()
+            device.wake(context)
             val received = DatagramPacket(ByteArray(2048), 2048)
             listener.receive(received)
             val expected = ByteArray(6) { 0xff.toByte() } +
@@ -55,7 +55,7 @@ class WakeWidgetTest {
             for (mac in listOf("001122334455", "00-11-22-33-44-55")) {
                 val device = WidgetDevice.parseArchive(json("::1", listener.localPort).replace("00:11:22:33:44:55", mac)).single()
                 assertArrayEquals(canonical.packet(), device.packet())
-                device.wake()
+                device.wake(context)
                 val received = DatagramPacket(ByteArray(2048), 2048)
                 listener.receive(received)
                 assertArrayEquals(canonical.packet(), received.data.copyOf(received.length))
@@ -71,7 +71,7 @@ class WakeWidgetTest {
         DatagramSocket(0).use { listener ->
             listener.soTimeout = 3000
             val device = WidgetDevice.parseArchive(json("", listener.localPort)).single()
-            device.wake()
+            device.wake(context)
             val received = DatagramPacket(ByteArray(2048), 2048)
             listener.receive(received)
             assertArrayEquals(device.packet(), received.data.copyOf(received.length))

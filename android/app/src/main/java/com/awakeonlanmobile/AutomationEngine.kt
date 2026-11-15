@@ -73,7 +73,7 @@ internal object AutomationEngine {
         // Persist the claim before sending. A crash can lose a wake, but must not replay an uncertain send.
         record(state, rule, now, "pending: delivery uncertain")
         AutomationStore.save(context, state)
-        if (result == "sent") result = try { checkNotNull(device).wake(); "sent" } catch (_: Exception) { "error: packet not confirmed" }
+        if (result == "sent") result = try { checkNotNull(device).wake(context); "sent" } catch (_: Exception) { "error: packet not confirmed" }
         val history = state.getJSONArray("history")
         history.getJSONObject(history.length() - 1).put("result", result)
         rule.put("lastResult", result)

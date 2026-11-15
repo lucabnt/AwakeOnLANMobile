@@ -29,7 +29,7 @@ class WakeWidgetProvider : AppWidgetProvider() {
                     val device = devices.find { it.id == selected(context, id) }
                     if (device == null) render(context, id, null, R.string.widget_missing)
                     else {
-                        device.wake()
+                        device.wake(context)
                         render(context, id, device, R.string.widget_sent)
                     }
                 }
