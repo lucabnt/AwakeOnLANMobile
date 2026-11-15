@@ -36,10 +36,22 @@ beforeEach(() => {
 });
 
 test('validates legacy data before committing encrypted migration and preserves password spaces', async () => {
-  backend.load.mockResolvedValue(JSON.stringify([device]));
+  backend.load.mockResolvedValue({
+    json: JSON.stringify([device]),
+    needsMigration: true,
+  });
   const loaded = await loadDevices();
   expect(loaded[0].passwd).toBe(' private ');
   expect(JSON.parse(backend.save.mock.calls[0][0])).toEqual(loaded);
+});
+
+test('normalizes an encrypted archive before returning it', async () => {
+  backend.load.mockResolvedValue({
+    json: JSON.stringify([device]),
+    needsMigration: false,
+  });
+  const devices = await loadDevices();
+  expect(backend.save).toHaveBeenCalledWith(JSON.stringify(devices));
 });
 
 test.each([
@@ -48,10 +60,23 @@ test.each([
   '[{"id":"pc","macAddr":"bad"}]',
   JSON.stringify([device, device]),
 ])('does not overwrite an invalid archive: %s', async json => {
-  backend.load.mockResolvedValue(json);
+  backend.load.mockResolvedValue({ json, needsMigration: false });
   await expect(loadDevices()).rejects.toThrow();
   expect(backend.save).not.toHaveBeenCalled();
 });
+
+test.each([false, true])(
+  'canonical archive is rewritten only for pending migration (%s)',
+  async needsMigration => {
+    const normalized = validateDevices([device]);
+    backend.load.mockResolvedValue({
+      json: JSON.stringify(normalized),
+      needsMigration,
+    });
+    expect(await loadDevices()).toEqual(normalized);
+    expect(backend.save).toHaveBeenCalledTimes(needsMigration ? 1 : 0);
+  },
+);
 
 test('does not silently load an empty list after decryption failure', async () => {
   backend.load.mockRejectedValue(new Error('Decryption failed'));
@@ -60,7 +85,10 @@ test('does not silently load an empty list after decryption failure', async () =
 });
 
 test('does not permit edits if migration cannot finish', async () => {
-  backend.load.mockResolvedValue(JSON.stringify([device]));
+  backend.load.mockResolvedValue({
+    json: JSON.stringify([device]),
+    needsMigration: true,
+  });
   backend.save.mockRejectedValue(new Error('Disk full'));
   await expect(loadDevices()).rejects.toThrow('Disk full');
 });
